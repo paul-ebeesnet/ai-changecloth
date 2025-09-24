@@ -1,0 +1,7 @@
+{
+  "name": "AI 古裝青花瓷換裝秀",
+  "description": "一個允許使用者上傳或拍攝照片，利用 AI 將人物服裝變為帶有青花瓷圖案的古裝，並可自訂背景與相框，最終生成一張獨一無E的作品並分享。",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
