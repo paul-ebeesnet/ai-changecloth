@@ -48,3 +48,15 @@ You can access the application from other devices on the same network by enterin
 - Background selection
 - Custom frame options
 - Download your final artwork
+- Upload to FTP server and generate QR codes for sharing
+
+## FTP Upload Configuration
+
+The application can upload generated images to an FTP server. The current configuration uploads to:
+- FTP Path: `ftp://tfunso@ebeesnet.com/domains/ebeesnet.com/public_html/project/wynn-mif/img`
+- Public URL: `https://ebeesnet.com/project/wynn-mif/img/`
+
+To configure a different FTP server:
+1. Update the FTP configuration in `backend/.env`
+2. Modify the upload path and URL in `backend/server.js`
+3. Restart the backend server

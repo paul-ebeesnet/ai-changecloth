@@ -3,6 +3,7 @@ import { AppState } from './types';
 import { FIXED_BACKGROUND, FIXED_FRAME, getRandomPattern } from './constants';
 import { fileToBase64, compositeWithBackground, compositeWithFrame, removeGreenBackground } from './utils/imageUtils';
 import { transformImageWithAI } from './services/aiService';
+import { uploadToFTP, generateQRCodeFromDataUrl } from './services/ftpUploadService';
 import LoadingOverlay from './components/LoadingOverlay';
 import Settings from './components/Settings';
 
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   const [randomPattern, setRandomPattern] = useState<string | null>(null);
   const [costumeImage, setCostumeImage] = useState<string | null>(null);
   const [finalImage, setFinalImage] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ imageUrl: string; qrCodeUrl: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -99,6 +101,7 @@ const App: React.FC = () => {
     setRandomPattern(null);
     setCostumeImage(null);
     setFinalImage(null);
+    setUploadResult(null);
     if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -167,7 +170,7 @@ const App: React.FC = () => {
       }
       
       // 为移动设备优化相机配置
-      const constraints = {
+      let constraints: MediaStreamConstraints = {
         video: {
           facingMode: 'user', // 优先使用前置摄像头
           width: { ideal: 1280 },
@@ -175,12 +178,44 @@ const App: React.FC = () => {
         }
       };
       
+      // 特别针对iOS设备进行优化
+      const isiOS = navigator.userAgent.match(/iPhone|iPad|iPod/i) !== null;
+      if (isiOS) {
+        // iOS设备上移除width/height约束以提高兼容性
+        constraints = {
+          video: {
+            facingMode: 'user'
+          }
+        };
+      }
+      
       streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // 添加调试信息
+      console.log('Camera stream acquired:', streamRef.current);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = streamRef.current;
+        
+        // iOS设备特殊处理：等待视频元数据加载完成后播放
+        if (isiOS) {
+          videoRef.current.addEventListener('loadedmetadata', () => {
+            console.log('Video metadata loaded');
+            videoRef.current!.play().catch(err => {
+              console.error('iOS video play error:', err);
+              handleError('無法播放視頻流，請檢查相機權限', err);
+            });
+          });
+          
+          // 添加播放事件监听
+          videoRef.current.addEventListener('play', () => {
+            console.log('Video playing');
+          });
+        }
       }
       setAppState(AppState.CAMERA_PREVIEW);
     } catch (err: any) {
+      console.error('Camera error:', err);
       handleError('無法開啟相機', err);
     }
   };
@@ -244,7 +279,21 @@ const App: React.FC = () => {
     }
   }, [appState, originalImage, randomPattern, processCostumeChange]);
 
-  
+  // Add a new function to automatically upload when final result is ready
+  const autoUploadAndGenerateQR = useCallback(async () => {
+    if (!finalImage || appState !== AppState.FINAL_RESULT) return;
+    
+    // Automatically trigger upload when final result is ready
+    await handleFTPUpload();
+  }, [finalImage, appState]);
+
+  // Add this new effect to automatically upload when final result is ready
+  useEffect(() => {
+    if (appState === AppState.FINAL_RESULT && finalImage && !uploadResult) {
+      autoUploadAndGenerateQR();
+    }
+  }, [appState, finalImage, uploadResult, autoUploadAndGenerateQR]);
+
   const handleDownload = () => {
     if (finalImage) {
       const link = document.createElement('a');
@@ -253,6 +302,38 @@ const App: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+  };
+
+  // Add this new function for FTP upload
+  const handleFTPUpload = async () => {
+    if (!finalImage) return;
+    
+    try {
+      setLoadingMessage('正在上傳圖片到伺服器...');
+      const filename = `ai-artwork-${Date.now()}.png`;
+      
+      try {
+        // Use FTP upload as the primary method
+        const result = await uploadToFTP(finalImage, filename);
+        setUploadResult(result);
+        setLoadingMessage('');
+      } catch (ftpError) {
+        console.warn('FTP upload failed, using data URL fallback:', ftpError);
+        setLoadingMessage('上傳失敗，正在生成 QR Code...');
+        
+        // Fallback - generate QR code with helpful message
+        try {
+          const result = await generateQRCodeFromDataUrl(finalImage);
+          setUploadResult(result);
+          setLoadingMessage('');
+        } catch (qrError) {
+          // If even QR code generation fails, show an error
+          throw new Error('無法生成 QR Code，請稍後再試');
+        }
+      }
+    } catch (err) {
+      handleError('上傳圖片失敗', err);
     }
   };
 
@@ -386,7 +467,13 @@ const App: React.FC = () => {
         return (
            <div className="flex flex-col items-center gap-4 w-full max-w-2xl mx-auto">
              <BackButton />
-             <video ref={videoRef} autoPlay playsInline className="rounded-lg w-full h-auto shadow-lg"></video>
+             <video 
+               ref={videoRef} 
+               autoPlay 
+               playsInline 
+               muted
+               className="rounded-lg w-full h-auto shadow-lg"
+             ></video>
              <button onClick={capturePhoto} className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-xl">拍照</button>
            </div>
         );
@@ -424,16 +511,62 @@ const App: React.FC = () => {
             <div className="text-center flex flex-col items-center gap-6">
                  <BackButton />
                  <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">恭喜！您的作品已完成</h1>
-                 {finalImage && <img src={finalImage} alt="Final masterpiece" className="rounded-xl shadow-2xl max-w-full md:max-w-2xl"/>}
-                 <p className="text-lg">您的作品已準備就緒，可以下載了！</p>
-                 <div className="flex flex-col md:flex-row gap-4 justify-center mt-4">
-                    <button onClick={handleDownload} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
-                        下載圖片
-                    </button>
-                    <button onClick={resetState} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
+                 {finalImage && (
+                   <div className="relative">
+                     {uploadResult && uploadResult.thumbnailUrl ? (
+                       // Show thumbnail if available
+                       <img src={uploadResult.thumbnailUrl} alt="Final masterpiece thumbnail" className="rounded-xl shadow-2xl max-w-full md:max-w-2xl" />
+                     ) : (
+                       // Fallback to full image if no thumbnail
+                       <img src={finalImage} alt="Final masterpiece" className="rounded-xl shadow-2xl max-w-full md:max-w-2xl" />
+                     )}
+                     {/* Overlay to indicate this is a thumbnail */}
+                     {uploadResult && uploadResult.thumbnailUrl && (
+                       <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                         縮圖預覽
+                       </div>
+                     )}
+                   </div>
+                 )}
+                 
+                 {/* Show upload status and QR code */}
+                 {uploadResult ? (
+                   <div className="flex flex-col items-center gap-4 mt-4">
+                     <h2 className="text-2xl font-bold">圖片處理完成！</h2>
+                     {uploadResult.imageUrl.startsWith('data:text/plain') ? (
+                       // Show message when upload failed
+                       <div className="bg-yellow-900/50 p-4 rounded-lg">
+                         <p className="text-lg text-yellow-200 mb-4">圖片上傳服務暫時無法使用</p>
+                         <p className="text-md text-yellow-300">您可以下載圖片保存到您的設備</p>
+                         <img src={uploadResult.qrCodeUrl} alt="QR Code" className="w-48 h-48 mx-auto mt-4" />
+                       </div>
+                     ) : (
+                       // Show QR code when upload succeeded
+                       <>
+                         <p className="text-lg">您可以透過以下 QR Code 分享您的作品：</p>
+                         <img src={uploadResult.qrCodeUrl} alt="QR Code" className="w-64 h-64" />
+                         <p className="text-md">或直接訪問：<a href={uploadResult.imageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{uploadResult.imageUrl}</a></p>
+                         <p className="text-sm text-gray-400 mt-2">圖片存儲於: https://ebeesnet.com/project/wynn-mif/img/</p>
+                       </>
+                     )}
+                     <div className="flex flex-col md:flex-row gap-4 justify-center mt-4">
+                        <button onClick={handleDownload} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
+                            下載圖片
+                        </button>
+                        <button onClick={resetState} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
+                            再玩一次
+                        </button>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="flex flex-col items-center gap-4 mt-4">
+                     <p className="text-lg">正在上傳圖片並生成 QR Code...</p>
+                     {loadingMessage && <p className="text-md">{loadingMessage}</p>}
+                     <button onClick={resetState} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 mt-4">
                         再玩一次
-                    </button>
-                </div>
+                     </button>
+                   </div>
+                 )}
             </div>
         );
       case AppState.ERROR:

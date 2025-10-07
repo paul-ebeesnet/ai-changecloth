@@ -36,12 +36,14 @@ export const transformImageWithAI = async (
 Instructions:
 1. You are given two images. The first image contains a person. The second image contains a texture or pattern.
 2. Identify the main person in the first image.
-3. Replace their clothing with an elegant ancient Chinese costume (古裝) in traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
-4. The new costume's texture, pattern, and color scheme MUST be derived from the second image provided.
-5. Preserve the original face, hair, and pose of the person.
-6. Set the entire background to a solid, pure green color for chroma keying.
-7. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
-8. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
+3. Convert the ENTIRE person (including face, hair, hands, and all visible body parts) to traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
+4. Replace their clothing with an elegant ancient Chinese costume (古裝) in traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
+5. The new costume's texture, pattern, and color scheme MUST be derived from the second image provided.
+6. Ensure that ALL aspects of the person (facial features, hair, skin texture, hands, etc.) are rendered in the traditional Chinese ink painting artistic style.
+7. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
+8. Set the entire background to a solid, pure green color for chroma keying.
+9. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
+10. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
 Output: Your response must contain ONLY the modified image in traditional Chinese ink painting style with exactly 30% empty space at the top. Do not include any text.`;
 
   if (apiProvider === 'gemini') {
@@ -137,7 +139,19 @@ const transformWithOpenRouter = async (
             content: [
               {
                 type: "text",
-                text: prompt
+                text: `Task: Image modification using a pattern to create traditional Chinese ink painting style with 30% top space.
+Instructions:
+1. You are given two images. The first image contains a person. The second image contains a texture or pattern.
+2. Identify the main person in the first image.
+3. Convert the ENTIRE person (including face, hair, hands, and all visible body parts) to traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
+4. Replace their clothing with an elegant ancient Chinese costume (古裝) in traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
+5. The new costume's texture, pattern, and color scheme MUST be derived from the second image provided.
+6. Ensure that ALL aspects of the person (facial features, hair, skin texture, hands, etc.) are rendered in the traditional Chinese ink painting artistic style.
+7. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
+8. Set the entire background to a solid, pure green color for chroma keying.
+9. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
+10. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
+Output: Your response must contain ONLY the modified image in traditional Chinese ink painting style with exactly 30% empty space at the top. Do not include any text.`
               },
               {
                 type: "image_url",
