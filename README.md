@@ -33,6 +33,14 @@ View your app in AI Studio: https://ai.studio/apps/drive/1hfZXb8WO1Pi9b7eJ08-LO7
    npm run dev
    ```
 
+## Network Testing
+
+After running `npm run dev`, the development server will display network addresses like:
+- http://192.168.1.117:3000/
+- http://192.168.1.16:3000/
+
+You can access the application from other devices on the same network by entering these addresses in their browsers. For detailed instructions, see [NETWORK_TESTING.md](file:///Users/paulchang/Library/Mobile%20Documents/com~apple~CloudDocs/PDF/Ebees/Project/Wynn%20x%20MIF/ai-changecloth/NETWORK_TESTING.md).
+
 ## Features
 
 - Select from 10 traditional Chinese costume patterns
