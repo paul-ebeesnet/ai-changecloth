@@ -40,10 +40,11 @@ Instructions:
 4. Replace their clothing with an elegant ancient Chinese costume (古裝) in traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
 5. The new costume's texture, pattern, and color scheme MUST be derived from the second image provided.
 6. Ensure that ALL aspects of the person (facial features, hair, skin texture, hands, etc.) are rendered in the traditional Chinese ink painting artistic style.
-7. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
-8. Set the entire background to a solid, pure green color for chroma keying.
-9. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
-10. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
+7. CRITICAL: MAINTAIN NATURAL COLOR PALETTE - DO NOT convert the image to black and white or grayscale. Preserve the original color tones while applying the ink painting style.
+8. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
+9. Set the entire background to a solid, pure green color for chroma keying.
+10. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
+11. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
 Output: Your response must contain ONLY the modified image in traditional Chinese ink painting style with exactly 30% empty space at the top. Do not include any text.`;
 
   if (apiProvider === 'gemini') {
@@ -147,10 +148,11 @@ Instructions:
 4. Replace their clothing with an elegant ancient Chinese costume (古裝) in traditional Chinese ink painting style (水墨画风格, 中國国风繪畫風格).
 5. The new costume's texture, pattern, and color scheme MUST be derived from the second image provided.
 6. Ensure that ALL aspects of the person (facial features, hair, skin texture, hands, etc.) are rendered in the traditional Chinese ink painting artistic style.
-7. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
-8. Set the entire background to a solid, pure green color for chroma keying.
-9. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
-10. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
+7. CRITICAL: MAINTAIN NATURAL COLOR PALETTE - DO NOT convert the image to black and white or grayscale. Preserve the original color tones while applying the ink painting style.
+8. Preserve the original pose of the person but enhance all visual elements to match the ink painting aesthetic.
+9. Set the entire background to a solid, pure green color for chroma keying.
+10. CRITICAL: Leave exactly 30% space at the top of the image with NO content - completely empty space. This is for adding text or other elements later.
+11. CRITICAL RULE: DO NOT add any extra objects, elements, or graphics from the second image into the final output. Only use it as a source for the clothing pattern. The output must only contain the modified person against the green background.
 Output: Your response must contain ONLY the modified image in traditional Chinese ink painting style with exactly 30% empty space at the top. Do not include any text.`
               },
               {

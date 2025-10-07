@@ -11,10 +11,16 @@ interface UserSettings {
   selectedModel: string;
 }
 
+// Define the usage statistics interface
+interface UsageStatistics {
+  [apiKey: string]: number;
+}
+
 const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
   const [apiKey, setApiKey] = useState('');
   const [apiProvider, setApiProvider] = useState<'gemini' | 'openrouter'>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
+  const [usageStats, setUsageStats] = useState<UsageStatistics>({});
 
   // Predefined models for each provider
   const models = {
@@ -50,6 +56,16 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
       // Set default values
       setSelectedModel(models.gemini[0].id);
     }
+    
+    // Load usage statistics
+    const savedStats = localStorage.getItem('apiUsageStats');
+    if (savedStats) {
+      try {
+        setUsageStats(JSON.parse(savedStats));
+      } catch (e) {
+        console.error('Failed to parse usage statistics', e);
+      }
+    }
   }, []);
 
   const handleSave = () => {
@@ -64,6 +80,19 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
     
     // Notify parent component
     onSave(settings);
+  };
+
+  // Function to get the last 5 characters of the API key for display
+  const getMaskedApiKey = (key: string) => {
+    if (!key) return '';
+    if (key.length <= 5) return key;
+    return '•••••' + key.slice(-5);
+  };
+
+  // Function to get usage count for the current API key
+  const getCurrentKeyUsage = () => {
+    if (!apiKey) return 0;
+    return usageStats[apiKey] || 0;
   };
 
   return (
@@ -131,6 +160,22 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
               <p>從 <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OpenRouter</a> 獲取您的 API 金鑰</p>
             )}
           </div>
+          
+          {/* Display masked API key and usage statistics */}
+          {apiKey && (
+            <div className="mt-3 p-3 bg-gray-700 rounded-lg">
+              <div className="text-sm">
+                <div className="flex justify-between">
+                  <span>目前 API 金鑰:</span>
+                  <span className="font-mono">{getMaskedApiKey(apiKey)}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span>已生成圖片數量:</span>
+                  <span>{getCurrentKeyUsage()} 張</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -153,6 +198,23 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
             ))}
           </div>
         </div>
+
+        {/* Usage Statistics Section */}
+        {Object.keys(usageStats).length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              API 使用統計
+            </label>
+            <div className="p-3 bg-gray-700 rounded-lg max-h-40 overflow-y-auto">
+              {Object.entries(usageStats).map(([key, count]) => (
+                <div key={key} className="flex justify-between py-1 text-sm">
+                  <span className="font-mono">{getMaskedApiKey(key)}</span>
+                  <span>{count} 張圖片</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-4">
           <button

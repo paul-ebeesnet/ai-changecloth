@@ -172,9 +172,7 @@ const App: React.FC = () => {
       // 为移动设备优化相机配置
       let constraints: MediaStreamConstraints = {
         video: {
-          facingMode: 'user', // 优先使用前置摄像头
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: 'user' // 优先使用前置摄像头，移除width和height约束以提高兼容性
         }
       };
       
@@ -252,6 +250,14 @@ const App: React.FC = () => {
       setLoadingMessage('AI 正在為您設計水墨風格古裝...');
       const transformedFromAI = await transformImageWithAI(originalImage, randomPattern);
       
+      // Increment API usage counter
+      const savedSettings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+      if (savedSettings.apiKey) {
+        const usageStats = JSON.parse(localStorage.getItem('apiUsageStats') || '{}');
+        usageStats[savedSettings.apiKey] = (usageStats[savedSettings.apiKey] || 0) + 1;
+        localStorage.setItem('apiUsageStats', JSON.stringify(usageStats));
+      }
+      
       setLoadingMessage('AI 換裝完成，正在進行綠幕去背處理...');
       const transparentImage = await removeGreenBackground(transformedFromAI);
 
@@ -320,7 +326,13 @@ const App: React.FC = () => {
         setLoadingMessage('');
       } catch (ftpError) {
         console.warn('FTP upload failed, using data URL fallback:', ftpError);
-        setLoadingMessage('上傳失敗，正在生成 QR Code...');
+        
+        // Special handling for Vercel deployment issues
+        if (ftpError.message && ftpError.message.includes('FTP uploads are not supported in this deployment')) {
+          setLoadingMessage('圖片上傳服務暫時無法使用 (部署限制)');
+        } else {
+          setLoadingMessage('上傳失敗，正在生成 QR Code...');
+        }
         
         // Fallback - generate QR code with helpful message
         try {

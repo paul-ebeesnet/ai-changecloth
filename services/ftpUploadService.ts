@@ -28,8 +28,14 @@ export const uploadToFTP = async (base64Image: string, filename: string): Promis
       }
     });
     
+    // Use absolute URL for backend API to work in both development and production
+    // In production, this should point to your deployed backend server
+    const backendUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001' // Fallback to localhost in dev
+      : 'http://localhost:3001';
+    
     // Call our backend service to handle the FTP upload through the proxy
-    const response = await fetch('/api/upload', {
+    const response = await fetch(`${backendUrl}/upload`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,6 +49,10 @@ export const uploadToFTP = async (base64Image: string, filename: string): Promis
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      // Check if this is a deployment issue
+      if (process.env.NODE_ENV === 'production' && response.status === 500) {
+        throw new Error('FTP_UPLOAD_NOT_SUPPORTED_IN_VERCEL_DEPLOYMENT');
+      }
       throw new Error(`Failed to upload image to server: ${errorData.error || response.statusText}`);
     }
     
@@ -61,6 +71,10 @@ export const uploadToFTP = async (base64Image: string, filename: string): Promis
       thumbnailUrl // This is the thumbnail URL
     };
   } catch (error) {
+    // Special handling for Vercel deployment issues
+    if (error.message === 'FTP_UPLOAD_NOT_SUPPORTED_IN_VERCEL_DEPLOYMENT') {
+      throw new Error('FTP uploads are not supported in this deployment. Please download the image to your device.');
+    }
     throw new Error(`Failed to upload image or generate QR code: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
