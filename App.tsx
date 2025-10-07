@@ -3,7 +3,7 @@ import { AppState } from './types';
 import { FIXED_BACKGROUND, FIXED_FRAME, getRandomPattern } from './constants';
 import { fileToBase64, compositeWithBackground, compositeWithFrame, removeGreenBackground } from './utils/imageUtils';
 import { transformImageWithAI } from './services/aiService';
-import { uploadToCloudinary, uploadToFTP, generateQRCodeFromDataUrl } from './services/ftpUploadService';
+import { uploadToCloudinary, uploadToFTP, uploadViaPHP, generateQRCodeFromDataUrl } from './services/ftpUploadService';
 import LoadingOverlay from './components/LoadingOverlay';
 import Settings from './components/Settings';
 
@@ -18,7 +18,19 @@ const App: React.FC = () => {
   const [randomPattern, setRandomPattern] = useState<string | null>(null);
   const [costumeImage, setCostumeImage] = useState<string | null>(null);
   const [finalImage, setFinalImage] = useState<string | null>(null);
-  const [uploadResult, setUploadResult] = useState<{ imageUrl: string; qrCodeUrl: string } | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ imageUrl: string; qrCodeUrl: string; thumbnailUrl?: string } | null>(null);
+
+  // Add effect to log uploadResult changes
+  useEffect(() => {
+    console.log('uploadResult state changed:', uploadResult);
+    if (uploadResult) {
+      console.log('uploadResult details:', {
+        hasThumbnailUrl: !!uploadResult.thumbnailUrl,
+        thumbnailUrl: uploadResult.thumbnailUrl,
+        imageUrl: uploadResult.imageUrl
+      });
+    }
+  }, [uploadResult]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -191,7 +203,9 @@ const App: React.FC = () => {
         // iOS设备上移除width/height约束以提高兼容性
         constraints = {
           video: {
-            facingMode: 'user'
+            facingMode: 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
         };
       }
@@ -215,9 +229,15 @@ const App: React.FC = () => {
                 console.log('Attempting to play video on iOS');
                 videoRef.current!.play().catch(err => {
                   console.error('iOS video play error:', err);
-                  handleError('無法播放視頻流，請檢查：\n1. 已授予相機權限\n2. 沒有其他應用正在使用相機\n3. 嘗試刷新頁面\n4. 如果問題持續，請使用Safari瀏覽器', err);
+                  // Try setting the video to autoplay and muted
+                  videoRef.current!.autoplay = true;
+                  videoRef.current!.muted = true;
+                  videoRef.current!.play().catch(err2 => {
+                    console.error('Second attempt to play video failed:', err2);
+                    handleError('無法播放視頻流，請檢查：\n1. 已授予相機權限\n2. 沒有其他應用正在使用相機\n3. 嘗試刷新頁面\n4. 如果問題持續，請使用Safari瀏覽器', err2);
+                  });
                 });
-              }, 100);
+              }, 300);
             }
           };
           
@@ -239,6 +259,10 @@ const App: React.FC = () => {
           videoRef.current.addEventListener('error', (err) => {
             console.error('Video element error:', err);
           });
+        } else {
+          // For non-iOS devices, ensure autoplay and muted
+          videoRef.current.autoplay = true;
+          videoRef.current.muted = true;
         }
       }
       setAppState(AppState.CAMERA_PREVIEW);
@@ -341,16 +365,56 @@ const App: React.FC = () => {
 
   // Add a new function to automatically upload when final result is ready
   const autoUploadAndGenerateQR = useCallback(async () => {
-    if (!finalImage || appState !== AppState.FINAL_RESULT) return;
+    if (!finalImage || appState !== AppState.FINAL_RESULT) {
+      console.log('Auto upload conditions not met:', { 
+        hasFinalImage: !!finalImage, 
+        appState: appState,
+        expectedState: AppState.FINAL_RESULT
+      });
+      return;
+    }
     
+    console.log('Auto uploading final image');
     // Automatically trigger upload when final result is ready
     await handleFTPUpload();
   }, [finalImage, appState]);
 
   // Add this new effect to automatically upload when final result is ready
   useEffect(() => {
+    console.log('Checking auto upload conditions:', {
+      appState: appState,
+      appStateName: AppState[appState],
+      hasFinalImage: !!finalImage,
+      hasUploadResult: !!uploadResult,
+      uploadResult: uploadResult
+    });
+    
+    // Add more detailed logging
+    if (appState === AppState.FINAL_RESULT) {
+      console.log('In FINAL_RESULT state:');
+      console.log('- finalImage present:', !!finalImage);
+      console.log('- uploadResult present:', !!uploadResult);
+      if (uploadResult) {
+        console.log('- uploadResult.thumbnailUrl present:', !!uploadResult.thumbnailUrl);
+        console.log('- uploadResult.thumbnailUrl value:', uploadResult.thumbnailUrl);
+      }
+    }
+    
     if (appState === AppState.FINAL_RESULT && finalImage && !uploadResult) {
+      console.log('Triggering auto upload');
       autoUploadAndGenerateQR();
+    } else if (appState === AppState.FINAL_RESULT && finalImage && uploadResult) {
+      console.log('Upload already completed, not triggering again');
+      // Add additional check to verify thumbnail URL
+      if (uploadResult.thumbnailUrl) {
+        console.log('Thumbnail URL is present in uploadResult:', uploadResult.thumbnailUrl);
+      } else {
+        console.log('Thumbnail URL is missing from uploadResult');
+      }
+    } else if (appState === AppState.FINAL_RESULT && !finalImage) {
+      console.log('In final result state but no final image available');
+    } else if (appState !== AppState.FINAL_RESULT) {
+      console.log('Not in final result state');
     }
   }, [appState, finalImage, uploadResult, autoUploadAndGenerateQR]);
 
@@ -367,49 +431,163 @@ const App: React.FC = () => {
 
   // Add this new function for FTP upload
   const handleFTPUpload = async () => {
-    if (!finalImage) return;
+    if (!finalImage) {
+      console.log('No final image to upload');
+      return;
+    }
     
     try {
       setLoadingMessage('正在上傳圖片到伺服器...');
       const filename = `ai-artwork-${Date.now()}.png`;
       
+      console.log('Starting upload process for:', filename);
+      console.log('Final image data size:', finalImage.length, 'characters');
+      
+      // Log environment information
+      console.log('Environment info:', {
+        nodeEnv: process.env.NODE_ENV,
+        backendUrl: process.env.REACT_APP_BACKEND_URL,
+        cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
+        isProduction: process.env.NODE_ENV === 'production'
+      });
+      
       try {
-        // In production (Vercel), try Cloudinary first as it works better with serverless environments
+        // Check if we're in a production environment (Vercel deployment)
         if (process.env.NODE_ENV === 'production') {
-          // Check if Cloudinary is configured
-          if (process.env.CLOUDINARY_CLOUD_NAME) {
+          console.log('Running in production environment (Vercel), trying PHP API first');
+          
+          // First try PHP API upload (works with Vercel deployments)
+          try {
+            console.log('Trying PHP API upload...');
+            const result = await uploadViaPHP(finalImage, filename);
+            console.log('PHP API upload successful:', result);
+            console.log('Upload result details:', {
+              hasResult: !!result,
+              hasThumbnailUrl: !!result.thumbnailUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              imageUrl: result.imageUrl
+            });
+            setUploadResult(result);
+            setLoadingMessage('');
+            return;
+          } catch (phpError) {
+            console.warn('PHP API upload failed:', phpError);
+            // Log more details about the error
+            if (phpError instanceof Error) {
+              console.error('PHP API error details:', {
+                name: phpError.name,
+                message: phpError.message,
+                stack: phpError.stack
+              });
+            }
+            // Don't throw here, continue to other options
+          }
+          
+          // Check if backend URL is configured
+          const backendUrl = process.env.REACT_APP_BACKEND_URL;
+          console.log('Backend URL configured:', backendUrl ? 'yes' : 'no');
+          
+          if (!backendUrl) {
+            // In production without backend URL, show a specific message
+            console.log('No backend URL configured, trying Cloudinary as alternative');
+          }
+          
+          // Check if Cloudinary is configured as an alternative
+          const cloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+          console.log('Cloudinary configured:', cloudinaryCloudName ? 'yes' : 'no');
+          
+          if (cloudinaryCloudName) {
+            console.log('Trying Cloudinary upload...');
             const result = await uploadToCloudinary(finalImage, filename);
+            console.log('Cloudinary upload successful:', result);
+            console.log('Upload result details:', {
+              hasResult: !!result,
+              hasThumbnailUrl: !!result.thumbnailUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              imageUrl: result.imageUrl
+            });
             setUploadResult(result);
             setLoadingMessage('');
             return;
           }
-        }
-        
-        // Use FTP upload as the primary method (in development or when Cloudinary is not configured)
-        const result = await uploadToFTP(finalImage, filename);
-        setUploadResult(result);
-        setLoadingMessage('');
-      } catch (ftpError) {
-        console.warn('FTP upload failed, using data URL fallback:', ftpError);
-        
-        // Special handling for Vercel deployment issues
-        if (ftpError.message && ftpError.message.includes('FTP uploads are not supported in this deployment')) {
-          setLoadingMessage('圖片上傳服務暫時無法使用 (部署限制)');
         } else {
-          setLoadingMessage('上傳失敗，正在生成 QR Code...');
+          console.log('Running in development environment');
+          
+          // In development, first try to use the backend server if available
+          try {
+            console.log('Trying FTP upload to backend server...');
+            const result = await uploadToFTP(finalImage, filename);
+            console.log('FTP upload successful:', result);
+            console.log('Upload result details:', {
+              hasResult: !!result,
+              hasThumbnailUrl: !!result.thumbnailUrl,
+              thumbnailUrl: result.thumbnailUrl,
+              imageUrl: result.imageUrl
+            });
+            setUploadResult(result);
+            setLoadingMessage('');
+            return;
+          } catch (ftpError) {
+            console.warn('FTP upload failed:', ftpError);
+            // Continue to other options
+          }
         }
+        
+        // Fallback - try PHP API in development as well (for testing)
+        try {
+          console.log('Trying PHP API upload as fallback...');
+          const result = await uploadViaPHP(finalImage, filename);
+          console.log('PHP API upload successful:', result);
+          console.log('Upload result details:', {
+            hasResult: !!result,
+            hasThumbnailUrl: !!result.thumbnailUrl,
+            thumbnailUrl: result.thumbnailUrl,
+            imageUrl: result.imageUrl
+          });
+          setUploadResult(result);
+          setLoadingMessage('');
+          return;
+        } catch (phpError) {
+          console.warn('PHP API upload failed:', phpError);
+        }
+        
+        // If all methods fail, use fallback
+        console.log('All upload methods failed, using QR code fallback');
+        setLoadingMessage('上傳失敗，正在生成 QR Code...');
         
         // Fallback - generate QR code with helpful message
+        const result = await generateQRCodeFromDataUrl(finalImage);
+        console.log('QR code fallback generated:', result);
+        console.log('Upload result details:', {
+          hasResult: !!result,
+          hasThumbnailUrl: !!result.thumbnailUrl,
+          thumbnailUrl: result.thumbnailUrl,
+          imageUrl: result.imageUrl
+        });
+        setUploadResult(result);
+        setLoadingMessage('');
+      } catch (err) {
+        console.error('Upload process failed:', err);
+        // Fallback - generate QR code with helpful message
         try {
+          console.log('Generating QR code fallback due to error...');
           const result = await generateQRCodeFromDataUrl(finalImage);
+          console.log('QR code fallback generated:', result);
+          console.log('Upload result details:', {
+            hasResult: !!result,
+            hasThumbnailUrl: !!result.thumbnailUrl,
+            thumbnailUrl: result.thumbnailUrl,
+            imageUrl: result.imageUrl
+          });
           setUploadResult(result);
           setLoadingMessage('');
         } catch (qrError) {
-          // If even QR code generation fails, show an error
-          throw new Error('無法生成 QR Code，請稍後再試');
+          console.error('QR code generation failed:', qrError);
+          handleError('上傳圖片失敗', err);
         }
       }
     } catch (err) {
+      console.error('Upload process failed:', err);
       handleError('上傳圖片失敗', err);
     }
   };
@@ -533,7 +711,7 @@ const App: React.FC = () => {
                 className="text-gray-400 hover:text-gray-200 text-sm flex items-center justify-center mx-auto"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.533 1.533 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.533 1.533 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.532 1.532 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                 </svg>
                 設定
               </button>
@@ -588,60 +766,30 @@ const App: React.FC = () => {
             <div className="text-center flex flex-col items-center gap-6">
                  <BackButton />
                  <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">恭喜！您的作品已完成</h1>
-                 {finalImage && (
-                   <div className="relative">
-                     {uploadResult && uploadResult.thumbnailUrl ? (
-                       // Show thumbnail if available
-                       <img src={uploadResult.thumbnailUrl} alt="Final masterpiece thumbnail" className="rounded-xl shadow-2xl max-w-full md:max-w-2xl" />
-                     ) : (
-                       // Fallback to full image if no thumbnail
-                       <img src={finalImage} alt="Final masterpiece" className="rounded-xl shadow-2xl max-w-full md:max-w-2xl" />
-                     )}
-                     {/* Overlay to indicate this is a thumbnail */}
-                     {uploadResult && uploadResult.thumbnailUrl && (
-                       <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                         縮圖預覽
-                       </div>
-                     )}
-                   </div>
-                 )}
                  
-                 {/* Show upload status and QR code */}
+                 {/* Show thumbnail and QR code side by side */}
                  {uploadResult ? (
-                   <div className="flex flex-col items-center gap-4 mt-4">
-                     <h2 className="text-2xl font-bold">圖片處理完成！</h2>
-                     {uploadResult.imageUrl.startsWith('data:text/plain') ? (
-                       // Show message when upload failed
-                       <div className="bg-yellow-900/50 p-4 rounded-lg">
-                         <p className="text-lg text-yellow-200 mb-4">圖片上傳服務暫時無法使用</p>
-                         <p className="text-md text-yellow-300">您可以下載圖片保存到您的設備</p>
-                         <img src={uploadResult.qrCodeUrl} alt="QR Code" className="w-48 h-48 mx-auto mt-4" />
-                       </div>
-                     ) : (
-                       // Show QR code when upload succeeded
-                       <>
-                         <p className="text-lg">您可以透過以下 QR Code 分享您的作品：</p>
-                         <img src={uploadResult.qrCodeUrl} alt="QR Code" className="w-64 h-64" />
-                         <p className="text-md">或直接訪問：<a href={uploadResult.imageUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{uploadResult.imageUrl}</a></p>
-                         <p className="text-sm text-gray-400 mt-2">圖片存儲於: https://ebeesnet.com/project/wynn-mif/img/</p>
-                       </>
-                     )}
-                     <div className="flex flex-col md:flex-row gap-4 justify-center mt-4">
-                        <button onClick={handleDownload} className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
-                            下載圖片
-                        </button>
-                        <button onClick={resetState} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105">
-                            再玩一次
-                        </button>
+                   <div className="flex flex-col md:flex-row items-center justify-center gap-8 mt-4">
+                     {/* Thumbnail Display */}
+                     <div className="flex flex-col items-center">
+                       <h2 className="text-xl font-bold mb-4">您的作品</h2>
+                       <ThumbnailDisplay 
+                         thumbnailUrl={uploadResult.thumbnailUrl} 
+                         fallbackImageUrl={finalImage} 
+                       />
+                     </div>
+                     
+                     {/* QR Code Display */}
+                     <div className="flex flex-col items-center">
+                       <h2 className="text-xl font-bold mb-4">分享您的作品</h2>
+                       <img src={uploadResult.qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                       <p className="text-md mt-2">掃描 QR Code 分享您的作品</p>
                      </div>
                    </div>
                  ) : (
                    <div className="flex flex-col items-center gap-4 mt-4">
                      <p className="text-lg">正在上傳圖片並生成 QR Code...</p>
                      {loadingMessage && <p className="text-md">{loadingMessage}</p>}
-                     <button onClick={resetState} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 mt-4">
-                        再玩一次
-                     </button>
                    </div>
                  )}
             </div>
@@ -675,3 +823,89 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+const ThumbnailDisplay: React.FC<{ 
+  thumbnailUrl?: string | null; 
+  fallbackImageUrl?: string | null 
+}> = ({ thumbnailUrl, fallbackImageUrl }) => {
+  const [useThumbnail, setUseThumbnail] = useState<boolean>(true);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<boolean>(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+  
+  // Reset state when URL changes
+  useEffect(() => {
+    setUseThumbnail(true);
+    setImageLoaded(false);
+    setImageError(false);
+  }, [thumbnailUrl]);
+  
+  if (!fallbackImageUrl) {
+    return null;
+  }
+  
+  const imageUrl = useThumbnail && thumbnailUrl ? thumbnailUrl : fallbackImageUrl;
+  const isThumbnail = useThumbnail && !!thumbnailUrl;
+  
+  console.log('ThumbnailDisplay rendering:', { 
+    useThumbnail, 
+    thumbnailUrl, 
+    fallbackImageUrl,
+    imageUrl,
+    isThumbnail
+  });
+  
+  return (
+    <div className="relative">
+      <img 
+        ref={imageRef}
+        key={`thumbnail-display-${imageUrl}`}
+        src={imageUrl} 
+        alt={isThumbnail ? "Final masterpiece thumbnail" : "Final masterpiece"} 
+        className="rounded-xl shadow-2xl max-w-full md:max-w-2xl"
+        style={{ 
+          display: 'block',
+          border: imageError ? '2px solid red' : imageLoaded ? '2px solid green' : '2px solid gray'
+        }}
+        onError={(e) => {
+          console.log('❌ ThumbnailDisplay image failed to load:', e);
+          console.log('Failed URL:', imageUrl);
+          
+          const imgElement = e.target as HTMLImageElement;
+          console.log('Image element properties:', {
+            src: imgElement.src,
+            naturalWidth: imgElement.naturalWidth,
+            naturalHeight: imgElement.naturalHeight,
+            complete: imgElement.complete
+          });
+          
+          if (isThumbnail && thumbnailUrl) {
+            console.log('Switching to fallback image');
+            setUseThumbnail(false);
+          }
+          
+          setImageError(true);
+          setImageLoaded(false);
+        }}
+        onLoad={(e) => {
+          console.log('✅ ThumbnailDisplay image loaded successfully');
+          const imgElement = e.target as HTMLImageElement;
+          console.log('Image dimensions:', {
+            width: imgElement.naturalWidth,
+            height: imgElement.naturalHeight
+          });
+          
+          setImageLoaded(true);
+          setImageError(false);
+        }}
+      />
+      
+      {/* Overlay to indicate this is a thumbnail */}
+      {isThumbnail && (
+        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+          縮圖預覽
+        </div>
+      )}
+    </div>
+  );
+}

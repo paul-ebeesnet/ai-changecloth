@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thumbnail CORS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a202c;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d3748;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .thumbnail-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #48bb78; }
+        .error { background-color: #f56565; }
+        .loading { background-color: #4299e1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thumbnail CORS Test</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Direct Image Display with CORS Headers</h2>
+            <p>Testing the reported thumbnail URL with proper CORS handling:</p>
+            <p><strong>URL:</strong> https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867540763-thumb.png</p>
+            
+            <div class="image-container">
+                <img id="test-image" src="" alt="CORS Test Thumbnail">
+                <div class="thumbnail-overlay">縮圖預覽</div>
+            </div>
+            <div id="test-status" class="status loading">Loading...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Image Object URL</h2>
+            <p>Testing with Blob and Object URL:</p>
+            <div class="image-container">
+                <img id="blob-image" src="" alt="Blob Test Thumbnail">
+                <div class="thumbnail-overlay">縮圖預覽</div>
+            </div>
+            <div id="blob-status" class="status loading">Loading...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Debug Information</h2>
+            <div id="debug-info">
+                <p>Waiting for tests to complete...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const thumbnailUrl = 'https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867540763-thumb.png';
+        
+        // Test 1: Direct image loading
+        function testDirectLoading() {
+            const img = document.getElementById('test-image');
+            const status = document.getElementById('test-status');
+            
+            status.className = 'status loading';
+            status.innerHTML = 'Loading thumbnail...';
+            
+            img.onload = function() {
+                status.className = 'status success';
+                status.innerHTML = `✅ Direct loading successful<br>Dimensions: ${this.naturalWidth} x ${this.naturalHeight}`;
+            };
+            
+            img.onerror = function(e) {
+                status.className = 'status error';
+                status.innerHTML = '❌ Direct loading failed';
+                console.log('Direct loading error:', e);
+            };
+            
+            img.src = thumbnailUrl;
+        }
+        
+        // Test 2: Blob loading
+        function testBlobLoading() {
+            const img = document.getElementById('blob-image');
+            const status = document.getElementById('blob-status');
+            
+            status.className = 'status loading';
+            status.innerHTML = 'Loading blob...';
+            
+            fetch(thumbnailUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const objectUrl = URL.createObjectURL(blob);
+                    img.src = objectUrl;
+                    
+                    img.onload = function() {
+                        status.className = 'status success';
+                        status.innerHTML = `✅ Blob loading successful<br>Dimensions: ${this.naturalWidth} x ${this.naturalHeight}`;
+                        // Clean up object URL
+                        URL.revokeObjectURL(objectUrl);
+                    };
+                    
+                    img.onerror = function(e) {
+                        status.className = 'status error';
+                        status.innerHTML = '❌ Blob loading failed';
+                        console.log('Blob loading error:', e);
+                        URL.revokeObjectURL(objectUrl);
+                    };
+                })
+                .catch(error => {
+                    status.className = 'status error';
+                    status.innerHTML = `❌ Blob fetch failed: ${error.message}`;
+                    console.log('Blob fetch error:', error);
+                });
+        }
+        
+        // Get debug information
+        function getDebugInfo() {
+            const debugInfo = document.getElementById('debug-info');
+            
+            // Check if image exists and get headers
+            fetch(thumbnailUrl, { method: 'HEAD' })
+                .then(response => {
+                    debugInfo.innerHTML = `
+                        <h3>HTTP Response Headers</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Content-Type:</strong> ${response.headers.get('Content-Type')}</p>
+                        <p><strong>Content-Length:</strong> ${response.headers.get('Content-Length')}</p>
+                        <p><strong>Access-Control-Allow-Origin:</strong> ${response.headers.get('Access-Control-Allow-Origin') || 'Not present'}</p>
+                    `;
+                })
+                .catch(error => {
+                    debugInfo.innerHTML = `<p>Error getting headers: ${error.message}</p>`;
+                });
+        }
+        
+        // Run tests when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                testDirectLoading();
+                testBlobLoading();
+                getDebugInfo();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

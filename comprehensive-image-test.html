@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Comprehensive Image Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a202c;
+            color: white;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d3748;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .image-container {
+            position: relative;
+            text-align: center;
+        }
+        .thumbnail-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #48bb78; }
+        .error { background-color: #f56565; }
+        .loading { background-color: #4299e1; }
+        button {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <h1>Comprehensive Image Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct Image Display</h2>
+        <p>Testing the reported thumbnail URL directly:</p>
+        <p><strong>URL:</strong> https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png</p>
+        
+        <div class="image-grid">
+            <div class="image-container">
+                <h3>Thumbnail with Overlay</h3>
+                <div id="thumbnail-container" class="image-container">
+                    <img id="thumbnail-image" src="" alt="Thumbnail Test">
+                    <div class="thumbnail-overlay">縮圖預覽</div>
+                </div>
+                <div id="thumbnail-status" class="status loading">Loading...</div>
+            </div>
+            
+            <div class="image-container">
+                <h3>Full Image</h3>
+                <div id="full-container" class="image-container">
+                    <img id="full-image" src="" alt="Full Image Test">
+                </div>
+                <div id="full-status" class="status loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Image Properties</h2>
+        <div id="properties">
+            <p>Loading image properties...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Network Information</h2>
+        <div id="network-info">
+            <p>Checking network information...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Controls</h2>
+        <button onclick="loadImages()">Load Images</button>
+        <button onclick="clearImages()">Clear Images</button>
+        <button onclick="testReload()">Test Reload</button>
+    </div>
+
+    <script>
+        const thumbnailUrl = 'https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png';
+        const fullImageUrl = 'https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807.png';
+        
+        function loadImages() {
+            // Load thumbnail
+            const thumbnailImg = document.getElementById('thumbnail-image');
+            const thumbnailStatus = document.getElementById('thumbnail-status');
+            
+            thumbnailImg.src = thumbnailUrl;
+            thumbnailStatus.className = 'status loading';
+            thumbnailStatus.innerHTML = 'Loading thumbnail...';
+            
+            thumbnailImg.onload = function() {
+                thumbnailStatus.className = 'status success';
+                thumbnailStatus.innerHTML = `✅ Thumbnail loaded successfully<br>Dimensions: ${this.naturalWidth} x ${this.naturalHeight}`;
+            };
+            
+            thumbnailImg.onerror = function() {
+                thumbnailStatus.className = 'status error';
+                thumbnailStatus.innerHTML = '❌ Thumbnail failed to load';
+            };
+            
+            // Load full image
+            const fullImg = document.getElementById('full-image');
+            const fullStatus = document.getElementById('full-status');
+            
+            fullImg.src = fullImageUrl;
+            fullStatus.className = 'status loading';
+            fullStatus.innerHTML = 'Loading full image...';
+            
+            fullImg.onload = function() {
+                fullStatus.className = 'status success';
+                fullStatus.innerHTML = `✅ Full image loaded successfully<br>Dimensions: ${this.naturalWidth} x ${this.naturalHeight}`;
+            };
+            
+            fullImg.onerror = function() {
+                fullStatus.className = 'status error';
+                fullStatus.innerHTML = '❌ Full image failed to load';
+            };
+            
+            // Get image properties
+            getImageProperties();
+            
+            // Get network info
+            getNetworkInfo();
+        }
+        
+        function clearImages() {
+            document.getElementById('thumbnail-image').src = '';
+            document.getElementById('full-image').src = '';
+            document.getElementById('thumbnail-status').className = 'status loading';
+            document.getElementById('thumbnail-status').innerHTML = 'Cleared';
+            document.getElementById('full-status').className = 'status loading';
+            document.getElementById('full-status').innerHTML = 'Cleared';
+            document.getElementById('properties').innerHTML = '<p>Properties cleared</p>';
+            document.getElementById('network-info').innerHTML = '<p>Network info cleared</p>';
+        }
+        
+        function testReload() {
+            clearImages();
+            setTimeout(() => {
+                loadImages();
+            }, 1000);
+        }
+        
+        function getImageProperties() {
+            const propertiesDiv = document.getElementById('properties');
+            
+            fetch(thumbnailUrl)
+                .then(response => {
+                    propertiesDiv.innerHTML = `
+                        <h3>Thumbnail Properties</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Content-Type:</strong> ${response.headers.get('Content-Type')}</p>
+                        <p><strong>Content-Length:</strong> ${response.headers.get('Content-Length')} bytes</p>
+                        <p><strong>Last-Modified:</strong> ${response.headers.get('Last-Modified')}</p>
+                    `;
+                })
+                .catch(error => {
+                    propertiesDiv.innerHTML = `<p>Error getting properties: ${error.message}</p>`;
+                });
+        }
+        
+        function getNetworkInfo() {
+            const networkDiv = document.getElementById('network-info');
+            
+            // Simple connectivity test
+            const startTime = Date.now();
+            
+            fetch(thumbnailUrl, { method: 'HEAD' })
+                .then(response => {
+                    const endTime = Date.now();
+                    const loadTime = endTime - startTime;
+                    
+                    networkDiv.innerHTML = `
+                        <h3>Network Information</h3>
+                        <p><strong>Response Time:</strong> ${loadTime}ms</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Server:</strong> ${response.headers.get('Server')}</p>
+                    `;
+                })
+                .catch(error => {
+                    networkDiv.innerHTML = `<p>Error getting network info: ${error.message}</p>`;
+                });
+        }
+        
+        // Auto-load images when page loads
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                loadImages();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test App Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+        .step { margin: 10px 0; padding: 10px; border-left: 3px solid #ccc; }
+        .step.active { border-left-color: #007bff; background-color: #f8f9fa; }
+        .step.completed { border-left-color: #28a745; background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>Test App Flow</h1>
+    <p>This tool simulates the exact flow that happens in the App component.</p>
+    
+    <button id="startFlow">Start App Flow Simulation</button>
+    
+    <div id="steps">
+        <div class="step" id="step1">
+            <h3>Step 1: Generate Final Image</h3>
+            <p>Status: <span id="step1Status">Pending</span></p>
+        </div>
+        <div class="step" id="step2">
+            <h3>Step 2: Auto Upload Triggered</h3>
+            <p>Status: <span id="step2Status">Pending</span></p>
+        </div>
+        <div class="step" id="step3">
+            <h3>Step 3: Environment Check</h3>
+            <p>Status: <span id="step3Status">Pending</span></p>
+            <div id="envInfo"></div>
+        </div>
+        <div class="step" id="step4">
+            <h3>Step 4: Try PHP API Upload (Production)</h3>
+            <p>Status: <span id="step4Status">Pending</span></p>
+        </div>
+        <div class="step" id="step5">
+            <h3>Step 5: Set Upload Result</h3>
+            <p>Status: <span id="step5Status">Pending</span></p>
+        </div>
+    </div>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        // Function to load QRCode library with multiple fallbacks
+        async function loadQRCode() {
+            // Try multiple approaches
+            const approaches = [
+                // Approach 1: Load from unpkg CDN
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 2: Load from jsDelivr CDN (IIFE version)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 3: Load from jsDelivr CDN (alternative path)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                })
+            ];
+            
+            for (const approach of approaches) {
+                try {
+                    const QRCode = await approach();
+                    if (QRCode) {
+                        return QRCode;
+                    }
+                } catch (error) {
+                    console.warn('QRCode loading approach failed:', error);
+                }
+            }
+            
+            throw new Error('Failed to load QRCode library with all approaches');
+        }
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        function updateStep(stepId, status, message = '') {
+            const stepElement = document.getElementById(stepId);
+            const statusElement = document.getElementById(stepId + 'Status');
+            
+            statusElement.textContent = status;
+            
+            switch (status) {
+                case 'Active':
+                    stepElement.className = 'step active';
+                    break;
+                case 'Completed':
+                    stepElement.className = 'step completed';
+                    break;
+                case 'Failed':
+                    stepElement.className = 'step';
+                    statusElement.style.color = 'red';
+                    break;
+                case 'Skipped':
+                    stepElement.className = 'step';
+                    statusElement.style.color = 'orange';
+                    break;
+                default:
+                    stepElement.className = 'step';
+                    statusElement.style.color = '';
+            }
+            
+            if (message) {
+                const messageElement = document.createElement('p');
+                messageElement.textContent = message;
+                messageElement.style.margin = '5px 0';
+                messageElement.style.fontSize = '0.9em';
+                stepElement.appendChild(messageElement);
+            }
+        }
+        
+        // Generate final image (same as what the app generates)
+        async function generateFinalImage() {
+            updateStep('step1', 'Active');
+            log('Generating final image...');
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 600;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw background similar to what the app generates
+                const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(1, '#E0F7FA');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 800, 600);
+                
+                // Draw frame
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 20;
+                ctx.strokeRect(30, 30, 740, 540);
+                
+                // Draw person (simplified)
+                ctx.fillStyle = '#4CAF50';
+                ctx.beginPath();
+                ctx.arc(400, 200, 60, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#2196F3';
+                ctx.fillRect(350, 260, 100, 200);
+                
+                // Draw costume pattern
+                ctx.fillStyle = '#FF5722';
+                ctx.beginPath();
+                ctx.arc(300, 300, 20, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(500, 350, 20, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Draw text
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('AI Generated Artwork', 400, 500);
+                
+                const imageData = canvas.toDataURL('image/png');
+                log('Final image generated');
+                updateStep('step1', 'Completed');
+                return imageData;
+            } catch (error) {
+                log(`Final image generation failed: ${error.message}`);
+                updateStep('step1', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Simulate auto upload trigger (same as in App.tsx)
+        function simulateAutoUploadTrigger(finalImage) {
+            updateStep('step2', 'Active');
+            log('Auto upload triggered');
+            log('Final image data size: ' + finalImage.length + ' characters');
+            updateStep('step2', 'Completed');
+            return finalImage;
+        }
+        
+        // Check environment (same as in App.tsx handleFTPUpload)
+        function checkEnvironment() {
+            updateStep('step3', 'Active');
+            
+            // Simulate production environment
+            const envInfo = {
+                nodeEnv: 'production', // Simulate production environment
+                backendUrl: undefined, // No backend URL configured
+                cloudinaryName: undefined, // No Cloudinary configured
+                isProduction: true
+            };
+            
+            log('Environment check results (simulating production):');
+            log(`NODE_ENV: ${envInfo.nodeEnv}`);
+            log(`REACT_APP_BACKEND_URL: ${envInfo.backendUrl || 'undefined'}`);
+            log(`CLOUDINARY_CLOUD_NAME: ${envInfo.cloudinaryName || 'undefined'}`);
+            log(`Is Production: ${envInfo.isProduction}`);
+            
+            document.getElementById('envInfo').innerHTML = `
+                <p><strong>NODE_ENV:</strong> ${envInfo.nodeEnv}</p>
+                <p><strong>REACT_APP_BACKEND_URL:</strong> ${envInfo.backendUrl || 'undefined'}</p>
+                <p><strong>CLOUDINARY_CLOUD_NAME:</strong> ${envInfo.cloudinaryName || 'undefined'}</p>
+                <p><strong>Is Production:</strong> ${envInfo.isProduction}</p>
+            `;
+            
+            updateStep('step3', 'Completed');
+            return envInfo;
+        }
+        
+        // Try PHP API upload (same as in App.tsx handleFTPUpload)
+        async function tryPhpApiUpload(finalImage) {
+            updateStep('step4', 'Active');
+            log('Trying PHP API upload (production environment)');
+            
+            try {
+                // Load QRCode library
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCode();
+                log('QRCode library loaded successfully');
+                
+                // Generate filename (same as in App.tsx)
+                const filename = `ai-artwork-${Date.now()}.png`;
+                log(`Generated filename: ${filename}`);
+                
+                // Generate QR code (same as in uploadViaPHP function)
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code generated');
+                
+                // Send request (same as in uploadViaPHP function)
+                log('Sending request to PHP API...');
+                const startTime = Date.now();
+                
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: finalImage,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                const endTime = Date.now();
+                log(`Request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response body: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`Response body: ${JSON.stringify(result, null, 2)}`);
+                
+                if (result.success) {
+                    log('PHP API upload successful');
+                    updateStep('step4', 'Completed');
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+            } catch (error) {
+                log(`PHP API upload failed: ${error.message}`);
+                updateStep('step4', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Set upload result (same as in App.tsx handleFTPUpload)
+        function setUploadResult(result) {
+            updateStep('step5', 'Active');
+            log('Setting upload result');
+            log('Upload result: ' + JSON.stringify(result, null, 2));
+            updateStep('step5', 'Completed');
+            return result;
+        }
+        
+        // Main app flow simulation
+        async function simulateAppFlow() {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Starting app flow simulation...';
+            resultDiv.className = 'info';
+            
+            try {
+                // Step 1: Generate final image
+                const finalImage = await generateFinalImage();
+                
+                // Step 2: Auto upload triggered
+                const finalImageForUpload = simulateAutoUploadTrigger(finalImage);
+                
+                // Step 3: Check environment
+                const envInfo = checkEnvironment();
+                
+                // Step 4: Try PHP API upload (this is what should work in production)
+                const uploadResult = await tryPhpApiUpload(finalImageForUpload);
+                
+                // Step 5: Set upload result
+                const finalResult = setUploadResult(uploadResult);
+                
+                resultDiv.innerHTML = `
+                    <h2>App Flow Simulation Successful!</h2>
+                    <p><strong>Method Used:</strong> PHP API (Production Environment)</p>
+                    <p><strong>Image URL:</strong> <a href="${finalResult.url}" target="_blank">${finalResult.url}</a></p>
+                    <p><strong>Thumbnail URL:</strong> ${finalResult.thumbnailUrl ? `<a href="${finalResult.thumbnailUrl}" target="_blank">${finalResult.thumbnailUrl}</a>` : 'Not generated'}</p>
+                    <p><strong>Message:</strong> ${finalResult.message}</p>
+                `;
+                resultDiv.className = 'success';
+                log('App flow simulation completed successfully');
+            } catch (error) {
+                log(`App flow simulation failed: ${error.message}`);
+                console.error('App flow simulation error:', error);
+                resultDiv.innerHTML = `<h2>App Flow Simulation Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        }
+        
+        // Start the app flow simulation
+        document.getElementById('startFlow').addEventListener('click', simulateAppFlow);
+    </script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Upload Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+        .step { margin: 10px 0; padding: 10px; border-left: 3px solid #ccc; }
+        .step.active { border-left-color: #007bff; background-color: #f8f9fa; }
+        .step.completed { border-left-color: #28a745; background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h1>Debug Upload Flow</h1>
+    <p>This tool simulates the exact upload flow used by the application.</p>
+    
+    <button id="startFlow">Start Upload Flow Simulation</button>
+    
+    <div id="steps">
+        <div class="step" id="step1">
+            <h3>Step 1: Generate Test Image</h3>
+            <p>Status: <span id="step1Status">Pending</span></p>
+        </div>
+        <div class="step" id="step2">
+            <h3>Step 2: Generate Filename</h3>
+            <p>Status: <span id="step2Status">Pending</span></p>
+        </div>
+        <div class="step" id="step3">
+            <h3>Step 3: Check Environment</h3>
+            <p>Status: <span id="step3Status">Pending</span></p>
+            <div id="envInfo"></div>
+        </div>
+        <div class="step" id="step4">
+            <h3>Step 4: Try PHP API Upload</h3>
+            <p>Status: <span id="step4Status">Pending</span></p>
+        </div>
+        <div class="step" id="step5">
+            <h3>Step 5: Try FTP Upload (if needed)</h3>
+            <p>Status: <span id="step5Status">Pending</span></p>
+        </div>
+        <div class="step" id="step6">
+            <h3>Step 6: Generate QR Code Fallback</h3>
+            <p>Status: <span id="step6Status">Pending</span></p>
+        </div>
+    </div>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        // Function to load QRCode library with multiple fallbacks
+        async function loadQRCode() {
+            // Try multiple approaches
+            const approaches = [
+                // Approach 1: Load from unpkg CDN
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 2: Load from jsDelivr CDN (IIFE version)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 3: Load from jsDelivr CDN (alternative path)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                })
+            ];
+            
+            for (const approach of approaches) {
+                try {
+                    const QRCode = await approach();
+                    if (QRCode) {
+                        return QRCode;
+                    }
+                } catch (error) {
+                    console.warn('QRCode loading approach failed:', error);
+                }
+            }
+            
+            throw new Error('Failed to load QRCode library with all approaches');
+        }
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        function updateStep(stepId, status, message = '') {
+            const stepElement = document.getElementById(stepId);
+            const statusElement = document.getElementById(stepId + 'Status');
+            
+            statusElement.textContent = status;
+            
+            switch (status) {
+                case 'Active':
+                    stepElement.className = 'step active';
+                    break;
+                case 'Completed':
+                    stepElement.className = 'step completed';
+                    break;
+                case 'Failed':
+                    stepElement.className = 'step';
+                    statusElement.style.color = 'red';
+                    break;
+                case 'Skipped':
+                    stepElement.className = 'step';
+                    statusElement.style.color = 'orange';
+                    break;
+                default:
+                    stepElement.className = 'step';
+                    statusElement.style.color = '';
+            }
+            
+            if (message) {
+                const messageElement = document.createElement('p');
+                messageElement.textContent = message;
+                messageElement.style.margin = '5px 0';
+                messageElement.style.fontSize = '0.9em';
+                stepElement.appendChild(messageElement);
+            }
+        }
+        
+        // Generate test image
+        async function generateTestImage() {
+            updateStep('step1', 'Active');
+            log('Generating test image...');
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw a test image similar to what the app generates
+                const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(1, '#E0F7FA');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 15;
+                ctx.strokeRect(20, 20, 472, 472);
+                
+                ctx.fillStyle = '#2196F3';
+                ctx.beginPath();
+                ctx.arc(256, 256, 80, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Flow Test', 256, 265);
+                
+                const imageData = canvas.toDataURL('image/png');
+                log('Test image generated');
+                updateStep('step1', 'Completed');
+                return imageData;
+            } catch (error) {
+                log(`Image generation failed: ${error.message}`);
+                updateStep('step1', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Generate filename
+        function generateFilename() {
+            updateStep('step2', 'Active');
+            const filename = `ai-artwork-${Date.now()}.png`;
+            log(`Generated filename: ${filename}`);
+            updateStep('step2', 'Completed');
+            return filename;
+        }
+        
+        // Check environment (simulate what the app does)
+        function checkEnvironment() {
+            updateStep('step3', 'Active');
+            
+            // In a browser context, process.env is not available
+            // We'll simulate what the app would see
+            const envInfo = {
+                nodeEnv: typeof process !== 'undefined' && process.env ? process.env.NODE_ENV : undefined,
+                backendUrl: typeof process !== 'undefined' && process.env ? process.env.REACT_APP_BACKEND_URL : undefined,
+                cloudinaryName: typeof process !== 'undefined' && process.env ? process.env.CLOUDINARY_CLOUD_NAME : undefined,
+                isProduction: typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production'
+            };
+            
+            log('Environment check results:');
+            log(`NODE_ENV: ${envInfo.nodeEnv || 'undefined'}`);
+            log(`REACT_APP_BACKEND_URL: ${envInfo.backendUrl || 'undefined'}`);
+            log(`CLOUDINARY_CLOUD_NAME: ${envInfo.cloudinaryName || 'undefined'}`);
+            log(`Is Production: ${envInfo.isProduction}`);
+            
+            document.getElementById('envInfo').innerHTML = `
+                <p><strong>NODE_ENV:</strong> ${envInfo.nodeEnv || 'undefined'}</p>
+                <p><strong>REACT_APP_BACKEND_URL:</strong> ${envInfo.backendUrl || 'undefined'}</p>
+                <p><strong>CLOUDINARY_CLOUD_NAME:</strong> ${envInfo.cloudinaryName || 'undefined'}</p>
+                <p><strong>Is Production:</strong> ${envInfo.isProduction}</p>
+            `;
+            
+            updateStep('step3', 'Completed');
+            return envInfo;
+        }
+        
+        // Try PHP API upload
+        async function tryPhpApiUpload(imageData, filename) {
+            updateStep('step4', 'Active');
+            log('Trying PHP API upload...');
+            
+            try {
+                // Load QRCode library
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCode();
+                log('QRCode library loaded successfully');
+                
+                // Generate QR code
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code generated');
+                
+                // Send request
+                log('Sending request to PHP API...');
+                const startTime = Date.now();
+                
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                const endTime = Date.now();
+                log(`Request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response body: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`Response body: ${JSON.stringify(result, null, 2)}`);
+                
+                if (result.success) {
+                    log('PHP API upload successful');
+                    updateStep('step4', 'Completed');
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+            } catch (error) {
+                log(`PHP API upload failed: ${error.message}`);
+                updateStep('step4', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Try FTP upload (simulated)
+        async function tryFtpUpload(imageData, filename) {
+            updateStep('step5', 'Active');
+            log('Trying FTP upload (simulated)...');
+            
+            try {
+                // Load QRCode library
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCode();
+                log('QRCode library loaded successfully');
+                
+                // Generate QR code
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code generated');
+                
+                // In a real implementation, this would call the FTP upload function
+                // For simulation, we'll just return a mock result
+                log('FTP upload would be called here');
+                updateStep('step5', 'Skipped', 'FTP upload is not available in browser context');
+                return null;
+            } catch (error) {
+                log(`FTP upload failed: ${error.message}`);
+                updateStep('step5', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Generate QR code fallback
+        async function generateQrFallback(imageData) {
+            updateStep('step6', 'Active');
+            log('Generating QR code fallback...');
+            
+            try {
+                // Load QRCode library
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCode();
+                log('QRCode library loaded successfully');
+                
+                // Generate QR code with a helpful message
+                log('Generating QR code with fallback message...');
+                const message = "Image upload failed. Please try again later or contact support.";
+                const qrCodeUrl = await QRCode.toDataURL(message, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code fallback generated');
+                
+                updateStep('step6', 'Completed');
+                return {
+                    imageUrl: "data:text/plain;base64," + btoa(message),
+                    qrCodeUrl: qrCodeUrl
+                };
+            } catch (error) {
+                log(`QR code fallback failed: ${error.message}`);
+                updateStep('step6', 'Failed', error.message);
+                throw error;
+            }
+        }
+        
+        // Main flow simulation
+        async function simulateUploadFlow() {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Starting upload flow simulation...';
+            resultDiv.className = 'info';
+            
+            try {
+                // Step 1: Generate test image
+                const imageData = await generateTestImage();
+                
+                // Step 2: Generate filename
+                const filename = generateFilename();
+                
+                // Step 3: Check environment
+                const envInfo = checkEnvironment();
+                
+                // Step 4: Try PHP API upload (this is what should work in production)
+                try {
+                    const result = await tryPhpApiUpload(imageData, filename);
+                    resultDiv.innerHTML = `
+                        <h2>Upload Flow Simulation Successful!</h2>
+                        <p><strong>Method Used:</strong> PHP API</p>
+                        <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                        <p><strong>Thumbnail URL:</strong> ${result.thumbnailUrl ? `<a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a>` : 'Not generated'}</p>
+                        <p><strong>Message:</strong> ${result.message}</p>
+                    `;
+                    resultDiv.className = 'success';
+                    return;
+                } catch (phpError) {
+                    log(`PHP API upload failed: ${phpError.message}`);
+                }
+                
+                // Step 5: Try FTP upload (would be skipped in browser context)
+                try {
+                    const result = await tryFtpUpload(imageData, filename);
+                    if (result) {
+                        resultDiv.innerHTML = `
+                            <h2>Upload Flow Simulation Successful!</h2>
+                            <p><strong>Method Used:</strong> FTP</p>
+                            <p><strong>Image URL:</strong> ${result.imageUrl}</p>
+                            <p><strong>QR Code URL:</strong> Generated</p>
+                        `;
+                        resultDiv.className = 'success';
+                        return;
+                    }
+                } catch (ftpError) {
+                    log(`FTP upload failed: ${ftpError.message}`);
+                }
+                
+                // Step 6: Generate QR code fallback
+                try {
+                    const result = await generateQrFallback(imageData);
+                    resultDiv.innerHTML = `
+                        <h2>Upload Flow Simulation Completed with Fallback</h2>
+                        <p><strong>Method Used:</strong> QR Code Fallback</p>
+                        <p><strong>Message:</strong> Image upload failed, using QR code fallback</p>
+                        <img src="${result.qrCodeUrl}" alt="QR Code" style="width: 200px; height: 200px;">
+                    `;
+                    resultDiv.className = 'info';
+                    return;
+                } catch (qrError) {
+                    log(`QR code fallback failed: ${qrError.message}`);
+                    throw qrError;
+                }
+            } catch (error) {
+                log(`Upload flow simulation failed: ${error.message}`);
+                console.error('Upload flow simulation error:', error);
+                resultDiv.innerHTML = `<h2>Upload Flow Simulation Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        }
+        
+        // Start the flow simulation
+        document.getElementById('startFlow').addEventListener('click', simulateUploadFlow);
+    </script>
+</body>
+</html>

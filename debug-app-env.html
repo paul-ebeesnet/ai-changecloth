@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>App Environment Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #1a202c; color: white; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; background-color: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #3182ce; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #48bb78; border: 1px solid #38a169; color: white; }
+        .error { background-color: #f56565; border: 1px solid #e53e3e; color: white; }
+        .info { background-color: #4299e1; border: 1px solid #3182ce; color: white; }
+        .log { height: 300px; overflow-y: scroll; background: #2d3748; color: #68d391; font-family: monospace; padding: 10px; border-radius: 5px; }
+        pre { background: #2d3748; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>App Environment Debug</h1>
+    <p>This tool checks the environment variables and configuration that might affect the upload process.</p>
+    
+    <button id="checkEnv">Check Environment</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Check environment
+        document.getElementById('checkEnv').addEventListener('click', () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Checking environment...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Checking environment variables and configuration...');
+                
+                // Get environment information
+                const envInfo = {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    cookieEnabled: navigator.cookieEnabled,
+                    onLine: navigator.onLine,
+                    // Note: process.env is not available in browser context
+                    // These would be replaced by Vite at build time
+                    nodeEnv: import.meta.env?.MODE || 'undefined',
+                    prodMode: import.meta.env?.PROD ? 'production' : 'development',
+                    devMode: import.meta.env?.DEV ? 'development' : 'production',
+                    baseUrl: import.meta.env?.BASE_URL || 'undefined'
+                };
+                
+                log('Environment info: ' + JSON.stringify(envInfo, null, 2));
+                
+                // Check for specific environment variables that might affect upload
+                const backendUrl = import.meta.env?.VITE_BACKEND_URL || import.meta.env?.REACT_APP_BACKEND_URL;
+                const cloudinaryName = import.meta.env?.VITE_CLOUDINARY_CLOUD_NAME || import.meta.env?.REACT_APP_CLOUDINARY_CLOUD_NAME;
+                
+                log('Backend URL: ' + (backendUrl || 'not set'));
+                log('Cloudinary Name: ' + (cloudinaryName || 'not set'));
+                
+                resultDiv.innerHTML = `
+                    <h3>Environment Check Results</h3>
+                    <pre>${JSON.stringify(envInfo, null, 2)}</pre>
+                    <p><strong>Backend URL:</strong> ${backendUrl || 'not set'}</p>
+                    <p><strong>Cloudinary Name:</strong> ${cloudinaryName || 'not set'}</p>
+                    <p>These environment variables control which upload method is used:</p>
+                    <ul>
+                        <li>If in production mode and REACT_APP_BACKEND_URL is not set, it will try PHP API first</li>
+                        <li>If REACT_APP_BACKEND_URL is set, it will use FTP upload</li>
+                        <li>If REACT_APP_CLOUDINARY_CLOUD_NAME is set, it will use Cloudinary as fallback</li>
+                    </ul>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Environment check error: ${error.message}`);
+                resultDiv.innerHTML = `<h3>Environment Check Error</h3><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</body>
+</html>

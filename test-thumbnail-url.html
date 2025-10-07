@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thumbnail URL Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .thumbnail-container {
+            position: relative;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .thumbnail-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Thumbnail URL Test</h1>
+        <p>Testing the thumbnail URL that was reported as not displaying:</p>
+        <p><strong>URL:</strong> https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png</p>
+        
+        <div class="thumbnail-container">
+            <img src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png" alt="Test Thumbnail">
+            <div class="thumbnail-overlay">縮圖預覽</div>
+        </div>
+        
+        <p>If you can see the image above, the URL is working correctly.</p>
+    </div>
+</body>
+</html>

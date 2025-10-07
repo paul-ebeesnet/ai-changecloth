@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Comprehensive Thumbnail Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            color: #e2e8f0;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: rgba(45, 55, 72, 0.7);
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #63b3ed;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title svg {
+            width: 24px;
+            height: 24px;
+        }
+        .image-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .test-image {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            margin: 15px auto;
+        }
+        .thumbnail {
+            border: 3px solid #48bb78;
+        }
+        .full-image {
+            border: 3px solid #4299e1;
+        }
+        .status-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            margin: 10px 5px;
+        }
+        .status-success {
+            background: rgba(72, 187, 120, 0.2);
+            color: #68d391;
+            border: 1px solid #48bb78;
+        }
+        .status-error {
+            background: rgba(237, 106, 90, 0.2);
+            color: #fc8181;
+            border: 1px solid #f56565;
+        }
+        .status-loading {
+            background: rgba(99, 179, 237, 0.2);
+            color: #90cdf4;
+            border: 1px solid #63b3ed;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        button {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button.secondary {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+        button.success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        button.warning {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+        .info-box {
+            background: rgba(49, 130, 206, 0.15);
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        .debug-info {
+            background: rgba(45, 55, 72, 0.9);
+            border: 1px solid rgba(99, 179, 237, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .image-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .info-card {
+            background: rgba(26, 32, 44, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .info-card h4 {
+            margin-top: 0;
+            color: #90cdf4;
+            font-size: 1rem;
+        }
+        .highlight {
+            animation: highlight 2s ease;
+        }
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(236, 201, 75, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(236, 201, 75, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(236, 201, 75, 0); }
+        }
+        .cors-warning {
+            background: rgba(237, 137, 54, 0.15);
+            border-left: 4px solid #ed8936;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        h1 {
+            text-align: center;
+            background: linear-gradient(90deg, #63b3ed, #48bb78);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #a0aec0;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Comprehensive Thumbnail Display Test</h1>
+        <p class="subtitle">Debugging tool to verify thumbnail visibility and loading issues</p>
+        
+        <div class="test-section">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                Test Information
+            </h2>
+            <div class="info-box">
+                <p>This test helps diagnose why thumbnails might not be visible in your React application.</p>
+                <p>Common issues:</p>
+                <ul>
+                    <li>CSS visibility/opacity/display properties</li>
+                    <li>Image positioning outside viewport</li>
+                    <li>CORS restrictions</li>
+                    <li>Network loading issues</li>
+                    <li>React component rendering problems</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
+                </svg>
+                Thumbnail Test
+            </h2>
+            <div class="image-container">
+                <div id="thumbnail-status" class="status-indicator status-loading">
+                    ⏳ Loading thumbnail...
+                </div>
+                <img 
+                    id="test-thumbnail"
+                    class="test-image thumbnail"
+                    src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685-thumb.png" 
+                    alt="Test Thumbnail"
+                    style="display: none;"
+                >
+                <div id="thumbnail-info" class="image-info" style="display: none;">
+                    <div class="info-card">
+                        <h4>Dimensions</h4>
+                        <p id="thumbnail-dimensions">-</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Visibility</h4>
+                        <p id="thumbnail-visibility">-</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Status</h4>
+                        <p id="thumbnail-load-status">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
+                </svg>
+                Full Image Test
+            </h2>
+            <div class="image-container">
+                <div id="full-image-status" class="status-indicator status-loading">
+                    ⏳ Loading full image...
+                </div>
+                <img 
+                    id="test-full-image"
+                    class="test-image full-image"
+                    src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685.png" 
+                    alt="Test Full Image"
+                    style="display: none;"
+                >
+                <div id="full-image-info" class="image-info" style="display: none;">
+                    <div class="info-card">
+                        <h4>Dimensions</h4>
+                        <p id="full-image-dimensions">-</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Visibility</h4>
+                        <p id="full-image-visibility">-</p>
+                    </div>
+                    <div class="info-card">
+                        <h4>Status</h4>
+                        <p id="full-image-load-status">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 01.359.852L12.982 9.75h7.268a.75.75 0 01.548 1.262l-10.5 11.25a.75.75 0 01-1.272-.71l1.992-7.302H3.75a.75.75 0 01-.548-1.262l10.5-11.25a.75.75 0 01.913-.143z" clip-rule="evenodd" />
+                </svg>
+                Controls
+            </h2>
+            <div class="controls">
+                <button id="reload-all">🔄 Reload All Images</button>
+                <button id="check-visibility" class="secondary">🔍 Check Visibility</button>
+                <button id="force-show-thumbnail" class="success">👁️ Force Show Thumbnail</button>
+                <button id="highlight-thumbnail" class="warning">✨ Highlight Thumbnail</button>
+                <button id="show-debug-info" class="secondary">🐛 Show Debug Info</button>
+            </div>
+        </div>
+
+        <div class="test-section" id="debug-section" style="display: none;">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm8.706-1.442c1.146-.573 2.437.463 2.126 1.706l-.709 2.836.042-.02a.75.75 0 01.67 1.34l-.04.022c-1.147.573-2.438-.463-2.127-1.706l.71-2.836-.042.02a.75.75 0 11-.671-1.34l.041-.022zM12 9a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                </svg>
+                Debug Information
+            </h2>
+            <div class="debug-info">
+                <pre id="debug-output">No debug information yet. Click "Show Debug Info" to populate.</pre>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                </svg>
+                CORS Information
+            </h2>
+            <div class="cors-warning">
+                <p><strong>Important:</strong> If images fail to load due to CORS restrictions, you may see:</p>
+                <ul>
+                    <li>Image dimensions as 0x0</li>
+                    <li>Console errors about CORS policy</li>
+                    <li>Images not displaying despite successful network requests</li>
+                </ul>
+                <p>The backend should include proper CORS headers. If issues persist, contact the server administrator.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM elements
+        const thumbnailImg = document.getElementById('test-thumbnail');
+        const fullImageImg = document.getElementById('test-full-image');
+        const thumbnailStatus = document.getElementById('thumbnail-status');
+        const fullImageStatus = document.getElementById('full-image-status');
+        const thumbnailInfo = document.getElementById('thumbnail-info');
+        const fullImageInfo = document.getElementById('full-image-info');
+        const debugOutput = document.getElementById('debug-output');
+        const debugSection = document.getElementById('debug-section');
+
+        // Thumbnail event handlers
+        thumbnailImg.onload = function() {
+            console.log('✅ Thumbnail loaded successfully');
+            thumbnailStatus.className = 'status-indicator status-success';
+            thumbnailStatus.innerHTML = '✅ Thumbnail loaded successfully';
+            thumbnailInfo.style.display = 'grid';
+            
+            // Update thumbnail info
+            document.getElementById('thumbnail-dimensions').textContent = 
+                `${this.naturalWidth} × ${this.naturalHeight}`;
+            document.getElementById('thumbnail-load-status').textContent = 'Loaded';
+            
+            // Check visibility
+            checkElementVisibility(this, 'thumbnail');
+            
+            // Show the image
+            this.style.display = 'inline-block';
+        };
+
+        thumbnailImg.onerror = function() {
+            console.log('❌ Thumbnail failed to load');
+            thumbnailStatus.className = 'status-indicator status-error';
+            thumbnailStatus.innerHTML = '❌ Thumbnail failed to load';
+            this.style.display = 'none';
+        };
+
+        // Full image event handlers
+        fullImageImg.onload = function() {
+            console.log('✅ Full image loaded successfully');
+            fullImageStatus.className = 'status-indicator status-success';
+            fullImageStatus.innerHTML = '✅ Full image loaded successfully';
+            fullImageInfo.style.display = 'grid';
+            
+            // Update full image info
+            document.getElementById('full-image-dimensions').textContent = 
+                `${this.naturalWidth} × ${this.naturalHeight}`;
+            document.getElementById('full-image-load-status').textContent = 'Loaded';
+            
+            // Check visibility
+            checkElementVisibility(this, 'full-image');
+            
+            // Show the image
+            this.style.display = 'inline-block';
+        };
+
+        fullImageImg.onerror = function() {
+            console.log('❌ Full image failed to load');
+            fullImageStatus.className = 'status-indicator status-error';
+            fullImageStatus.innerHTML = '❌ Full image failed to load';
+            this.style.display = 'none';
+        };
+
+        // Function to check element visibility
+        function checkElementVisibility(element, type) {
+            const rect = element.getBoundingClientRect();
+            const isVisible = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            
+            const visibilityInfo = {
+                dimensions: { width: rect.width, height: rect.height },
+                position: { top: rect.top, left: rect.left, bottom: rect.bottom, right: rect.right },
+                isInViewport: isVisible,
+                offsetParent: element.offsetParent ? element.offsetParent.tagName : 'null',
+                computedStyle: {
+                    display: getComputedStyle(element).display,
+                    visibility: getComputedStyle(element).visibility,
+                    opacity: getComputedStyle(element).opacity
+                }
+            };
+            
+            console.log(`${type} visibility info:`, visibilityInfo);
+            
+            // Update visibility info in UI
+            document.getElementById(`${type}-visibility`).textContent = 
+                isVisible ? 'Visible in viewport' : 'Not in viewport';
+            
+            return visibilityInfo;
+        }
+
+        // Function to reload images with cache busting
+        function reloadImages() {
+            const timestamp = Date.now();
+            
+            // Reload thumbnail
+            thumbnailStatus.className = 'status-indicator status-loading';
+            thumbnailStatus.innerHTML = '⏳ Loading thumbnail...';
+            thumbnailImg.style.display = 'none';
+            thumbnailInfo.style.display = 'none';
+            thumbnailImg.src = `https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685-thumb.png?v=${timestamp}`;
+            
+            // Reload full image
+            fullImageStatus.className = 'status-indicator status-loading';
+            fullImageStatus.innerHTML = '⏳ Loading full image...';
+            fullImageImg.style.display = 'none';
+            fullImageInfo.style.display = 'none';
+            fullImageImg.src = `https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685.png?v=${timestamp}`;
+        }
+
+        // Function to force show thumbnail
+        function forceShowThumbnail() {
+            thumbnailImg.style.display = 'inline-block';
+            thumbnailImg.style.visibility = 'visible';
+            thumbnailImg.style.opacity = '1';
+            console.log('Force showing thumbnail');
+        }
+
+        // Function to highlight thumbnail
+        function highlightThumbnail() {
+            thumbnailImg.classList.add('highlight');
+            thumbnailImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+                thumbnailImg.classList.remove('highlight');
+            }, 2000);
+            console.log('Highlighting thumbnail');
+        }
+
+        // Function to show debug info
+        function showDebugInfo() {
+            debugSection.style.display = 'block';
+            
+            // Get detailed debug information
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                viewport: {
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                },
+                thumbnail: thumbnailImg.complete ? {
+                    src: thumbnailImg.src,
+                    naturalDimensions: {
+                        width: thumbnailImg.naturalWidth,
+                        height: thumbnailImg.naturalHeight
+                    },
+                    displayedDimensions: {
+                        width: thumbnailImg.width,
+                        height: thumbnailImg.height
+                    },
+                    visibility: checkElementVisibility(thumbnailImg, 'thumbnail')
+                } : 'Not loaded',
+                fullImage: fullImageImg.complete ? {
+                    src: fullImageImg.src,
+                    naturalDimensions: {
+                        width: fullImageImg.naturalWidth,
+                        height: fullImageImg.naturalHeight
+                    },
+                    displayedDimensions: {
+                        width: fullImageImg.width,
+                        height: fullImageImg.height
+                    },
+                    visibility: checkElementVisibility(fullImageImg, 'full-image')
+                } : 'Not loaded'
+            };
+            
+            debugOutput.textContent = JSON.stringify(debugInfo, null, 2);
+            debugSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Event listeners for buttons
+        document.getElementById('reload-all').addEventListener('click', reloadImages);
+        document.getElementById('check-visibility').addEventListener('click', () => {
+            if (thumbnailImg.complete) checkElementVisibility(thumbnailImg, 'thumbnail');
+            if (fullImageImg.complete) checkElementVisibility(fullImageImg, 'full-image');
+        });
+        document.getElementById('force-show-thumbnail').addEventListener('click', forceShowThumbnail);
+        document.getElementById('highlight-thumbnail').addEventListener('click', highlightThumbnail);
+        document.getElementById('show-debug-info').addEventListener('click', showDebugInfo);
+
+        // Initial load
+        console.log('Test page loaded. Waiting for images to load...');
+    </script>
+</body>
+</html>

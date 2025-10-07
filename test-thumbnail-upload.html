@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thumbnail Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #1a202c; color: white; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; background-color: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #3182ce; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #48bb78; border: 1px solid #38a169; color: white; }
+        .error { background-color: #f56565; border: 1px solid #e53e3e; color: white; }
+        .info { background-color: #4299e1; border: 1px solid #3182ce; color: white; }
+        .log { height: 300px; overflow-y: scroll; background: #2d3748; color: #68d391; font-family: monospace; padding: 10px; border-radius: 5px; }
+        .image-preview { max-width: 300px; margin: 10px 0; border: 1px solid #4a5568; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Thumbnail Upload Test</h1>
+    <p>This tool tests the thumbnail generation and upload process.</p>
+    
+    <button id="testUpload">Test Thumbnail Upload</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test thumbnail upload
+        document.getElementById('testUpload').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing thumbnail upload...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Starting thumbnail upload test...');
+                
+                // Create a test image (larger image to test thumbnail generation)
+                const canvas = document.createElement('canvas');
+                canvas.width = 1200;
+                canvas.height = 800;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw a simple pattern
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#0000ff';
+                for (let i = 0; i < 100; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = Math.random() * 50 + 10;
+                    ctx.fillRect(x, y, size, size);
+                }
+                
+                // Add some text
+                ctx.fillStyle = '#000000';
+                ctx.font = '30px Arial';
+                ctx.fillText('Test Image for Thumbnail', 50, 50);
+                
+                const testImage = canvas.toDataURL('image/png');
+                const filename = `thumbnail-test-${Date.now()}.png`;
+                
+                log('Test image created: ' + filename);
+                log('Test image size: ' + testImage.length + ' characters');
+                
+                // Generate a simple QR code (we'll use a placeholder)
+                const qrCodeUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                
+                // Upload to PHP API
+                log('Sending request to PHP API...');
+                const startTime = Date.now();
+                
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: testImage,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                const endTime = Date.now();
+                log('Response status: ' + response.status + ' (took ' + (endTime - startTime) + 'ms)');
+                
+                // Log response headers
+                log('Response headers:');
+                for (const [key, value] of response.headers.entries()) {
+                    log(`  ${key}: ${value}`);
+                }
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('Error response body: ' + errorText);
+                    throw new Error(`Failed to upload image: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                log('Success response: ' + JSON.stringify(result, null, 2));
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+                
+                resultDiv.innerHTML = `
+                    <h3>Thumbnail Upload Test Successful!</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+                        <div>
+                            <h4>Uploaded Image</h4>
+                            <img src="${result.url}" alt="Uploaded Image" class="image-preview">
+                        </div>
+                        ${result.thumbnailUrl ? `
+                        <div>
+                            <h4>Thumbnail</h4>
+                            <img src="${result.thumbnailUrl}" alt="Thumbnail" class="image-preview">
+                        </div>` : `
+                        <div>
+                            <h4>Thumbnail</h4>
+                            <p>No thumbnail generated</p>
+                        </div>`}
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                        ${result.thumbnailUrl ? `<p><strong>Thumbnail URL:</strong> <a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a></p>` : '<p><strong>Thumbnail:</strong> Not generated</p>'}
+                        <p><strong>Message:</strong> ${result.message}</p>
+                        <p><strong>Response Time:</strong> ${endTime - startTime}ms</p>
+                    </div>
+                `;
+                resultDiv.className = 'success';
+                
+                // Check if thumbnail exists
+                if (result.thumbnailUrl) {
+                    log('Checking if thumbnail is accessible...');
+                    try {
+                        const thumbResponse = await fetch(result.thumbnailUrl, { method: 'HEAD' });
+                        log('Thumbnail accessibility check: ' + thumbResponse.status);
+                        if (thumbResponse.ok) {
+                            log('Thumbnail is accessible!');
+                        } else {
+                            log('Thumbnail is not accessible: ' + thumbResponse.status);
+                        }
+                    } catch (thumbError) {
+                        log('Thumbnail accessibility check failed: ' + thumbError.message);
+                    }
+                }
+            } catch (error) {
+                log(`Thumbnail upload test error: ${error.message}`);
+                console.error('Thumbnail upload test error:', error);
+                
+                resultDiv.innerHTML = `
+                    <h3>Thumbnail Upload Test Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Check the server error logs for more details about thumbnail generation issues.</p>
+                `;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

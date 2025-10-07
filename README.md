@@ -2,6 +2,64 @@
 
 將您的照片變為獨一無二的水墨風格古裝藝術品。
 
+## 重要提醒：Vercel 部署限制
+
+⚠️ **重要**: 由於 Vercel 是無伺服器平台，**無法直接運行後端服務**。如果您將應用部署到 Vercel，必須將後端服務部署到其他支持長時間運行進程的平台。
+
+### Vercel 部署限制說明：
+1. Vercel 不支持長時間運行的後端服務（如您的 Node.js Express 服務器）
+2. FTP 上傳功能需要持續運行的後端服務來維持連接
+3. 相機功能和 AI 處理在前端運行，但圖片上傳需要後端支持
+
+### PHP API 解決方案：
+為了解決 Vercel 部署限制，我們提供了一個 PHP API 解決方案，可以直接在支持 PHP 的伺服器上運行（如您的 ebeesnet.com 伺服器），無需長時間運行的進程。
+
+## 部署到 Vercel 的正確方式
+
+### 前端部署（Vercel）：
+1. 將前端代碼部署到 Vercel
+2. 設置環境變數：
+   - `REACT_APP_BACKEND_URL`: 您的後端服務 URL
+   - `GEMINI_API_KEY`: 您的 Google AI Studio API 金鑰
+
+### 後端部署（需要單獨部署）：
+由於 Vercel 限制，您必須將後端服務部署到支持長時間運行進程的平台：
+
+#### 選項 1: 部署到雲伺服器 (推薦)
+- AWS EC2, DigitalOcean, Linode, 阿里雲, 腾訊雲等
+- 安裝 Node.js 環境
+- 運行您的後端服務: `cd backend && npm start`
+
+#### 選項 2: 部署到 Render
+1. 在 Render 上創建 Web Service
+2. 連接到您的 GitHub 倉庫
+3. 設置根目錄為 `/backend`
+4. 設置構建命令為 `npm install`
+5. 設置啟動命令為 `npm start`
+
+#### 選項 3: 部署到 Heroku
+1. 創建 Heroku 應用
+2. 連接 GitHub 倉庫
+3. 部署 `/backend` 目錄
+
+### 選項 4: 使用 PHP API (推薦用於 ebeesnet.com 伺服器)
+1. 將 `backend/upload.php` 文件上傳到您的 ebeesnet.com 伺服器
+2. 確保 `/project/wynn-mif/img/` 目錄存在且可寫
+3. 前端將自動使用 PHP API 處理圖片上傳
+4. 詳細說明請參閱 [PHP_API_DEPLOYMENT.md](file:///Users/paulchang/Library/Mobile%20Documents/com~apple~CloudDocs/PDF/Ebees/Project/Wynn%20x%20MIF/ai-changecloth/PHP_API_DEPLOYMENT.md)
+
+## 本地開發環境
+
+在本地開發時，您需要同時運行前端和後端：
+
+```bash
+# 終端 1: 運行前端
+npm run dev
+
+# 終端 2: 運行後端
+cd backend && npm run dev
+```
+
 ## 功能特色
 
 - 使用 AI 技術將現代照片轉換為傳統中國水墨畫風格的古裝造型
@@ -133,6 +191,15 @@ Cloudinary 是一個雲端圖片和視頻管理平台，與 Vercel 等無伺服�
 
 如果需要完全無伺服器的解決方案，需要將 FTP 上傳功能重構為使用支持的雲存儲服務 (如 AWS S3, Cloudinary 等)。
 
+### 選項 4: 使用 PHP API (推薦)
+
+對於 ebeesnet.com 伺服器，推薦使用提供的 PHP API 解決方案：
+
+1. 將 `backend/upload.php` 文件上傳到伺服器
+2. 確保圖片目錄可寫
+3. 前端會自動優先使用 PHP API
+4. 詳細部署說明請參閱 [PHP_API_DEPLOYMENT.md](file:///Users/paulchang/Library/Mobile%20Documents/com~apple~CloudDocs/PDF/Ebees/Project/Wynn%20x%20MIF/ai-changecloth/PHP_API_DEPLOYMENT.md)
+
 ## 故障排除
 
 ### FTP 上傳在 Vercel 部署中失敗
@@ -140,7 +207,8 @@ Cloudinary 是一個雲端圖片和視頻管理平台，與 Vercel 等無伺服�
 這是預期行為。Vercel 是無伺服器平台，不支持長期運行的後端服務。請確保：
 
 1. 你已將後端服務部署到支持的平台，或
-2. 使用 Cloudinary 作為替代方案 (推薦)
+2. 使用 Cloudinary 作為替代方案 (推薦)，或
+3. 使用 PHP API 解決方案 (推薦用於 ebeesnet.com 伺服器)
 
 ### Google API 配額限制
 

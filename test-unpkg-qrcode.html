@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Unpkg QRCode</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test Unpkg QRCode</h1>
+    <p>This tool tests loading the QRCode library from unpkg CDN.</p>
+    
+    <button id="testUnpkg">Test Unpkg QRCode</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test loading QRCode from unpkg
+        document.getElementById('testUnpkg').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing unpkg QRCode loading...';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Loading QRCode from unpkg CDN...');
+                
+                // Load from unpkg
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';
+                
+                script.onload = async () => {
+                    try {
+                        log('QRCode library loaded successfully from unpkg');
+                        log('QRCode available in window: ' + (typeof window.QRCode !== 'undefined'));
+                        
+                        if (window.QRCode) {
+                            // Test generating a QR code
+                            log('Generating QR code...');
+                            const qrCodeUrl = await window.QRCode.toDataURL('https://example.com', {
+                                width: 200,
+                                margin: 1
+                            });
+                            
+                            log('QR code generated successfully');
+                            log('QR code data URL length: ' + qrCodeUrl.length);
+                            
+                            resultDiv.innerHTML = `
+                                <h2>Unpkg QRCode Test Successful!</h2>
+                                <p>QRCode library loaded and working correctly from unpkg.</p>
+                                <img src="${qrCodeUrl}" alt="Test QR Code" style="width: 100px; height: 100px;">
+                            `;
+                            resultDiv.className = 'success';
+                        } else {
+                            throw new Error('QRCode not available in window object');
+                        }
+                    } catch (error) {
+                        log(`QRCode test failed: ${error.message}`);
+                        console.error('QRCode test error:', error);
+                        resultDiv.innerHTML = `<h2>QRCode Test Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                        resultDiv.className = 'error';
+                    }
+                };
+                
+                script.onerror = (error) => {
+                    log(`Failed to load QRCode from unpkg: ${error.message}`);
+                    console.error('Script load error:', error);
+                    resultDiv.innerHTML = `<h2>QRCode Load Failed</h2><p><strong>Error:</strong> Failed to load QRCode from unpkg CDN</p>`;
+                    resultDiv.className = 'error';
+                };
+                
+                document.head.appendChild(script);
+            } catch (error) {
+                log(`Unpkg test failed: ${error.message}`);
+                console.error('Unpkg test error:', error);
+                resultDiv.innerHTML = `<h2>Unpkg Test Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

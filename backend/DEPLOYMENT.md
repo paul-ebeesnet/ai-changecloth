@@ -1,11 +1,20 @@
 # 後端服務部署指南
 
+## 重要提醒：Vercel 部署限制
+
+⚠️ **重要**: 由於 Vercel 是無伺服器平台，**無法直接運行此後端服務**。您必須將後端服務部署到其他支持長時間運行進程的平台。
+
+### Vercel 部署限制說明：
+1. Vercel 不支持長時間運行的後端服務（如您的 Node.js Express 服務器）
+2. FTP 上傳功能需要持續運行的後端服務來維持連接
+3. 如果僅部署到 Vercel，FTP 功能將無法工作
+
 ## 部署選項
 
 ### 選項 1: 部署到雲伺服器 (推薦)
 
 #### 1. 準備伺服器
-- 選擇雲服務提供商 (AWS, DigitalOcean, Linode, etc.)
+- 選擇雲服務提供商 (AWS, DigitalOcean, Linode, 阿里雲, 腾訊雲等)
 - 創建一個 Ubuntu 20.04+ 伺服器實例
 - 確保安全組/防火牆允許端口 3001 的入站連接
 
@@ -123,6 +132,25 @@ Render 會為你的服務提供一個 URL，類似於：
 在 Vercel 項目設置中添加環境變數：
 - `REACT_APP_BACKEND_URL`: https://ai-changecloth-backend.onrender.com
 
+### 選項 3: 部署到 Heroku
+
+#### 1. 創建 Heroku 應用
+- 訪問 https://heroku.com
+- 創建新應用
+- 連接到你的 GitHub 倉庫
+
+#### 2. 配置部署
+- 選擇 `/backend` 目錄
+- 設置環境變數 (FTP 配置等)
+- 啟用自動部署
+
+#### 3. 在前端設置環境變數
+Heroku 會為你的應用提供一個 URL，類似於：
+`https://your-app-name.herokuapp.com`
+
+在 Vercel 項目設置中添加環境變數：
+- `REACT_APP_BACKEND_URL`: https://your-app-name.herokuapp.com
+
 ## 環境變數配置
 
 確保在部署環境中設置以下環境變數：
@@ -157,6 +185,10 @@ pm2 restart ai-changecloth-backend
 - 點擊服務查看實時日誌
 - 設置通知以獲取部署更新
 
+### 使用 Heroku 監控
+- 使用 `heroku logs --tail` 查看實時日誌
+- 在 Heroku 儀表板中查看應用狀態
+
 ## 故障排除
 
 ### 常見問題
@@ -174,6 +206,11 @@ pm2 restart ai-changecloth-backend
 3. **內存不足**
    - 升級伺服器配置
    - 調整 Node.js 內存限制
+
+4. **Vercel 部署後無法上傳**
+   - 確保已部署後端服務到獨立平台
+   - 確保 `REACT_APP_BACKEND_URL` 環境變數已正確設置
+   - 測試後端服務 URL 是否可訪問
 
 ### 日誌查看
 

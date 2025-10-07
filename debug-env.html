@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Environment</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Environment</h1>
+    <p>This tool checks the environment configuration.</p>
+    
+    <button id="checkEnv">Check Environment</button>
+    
+    <div>
+        <h3>Environment Info:</h3>
+        <div id="envInfo"></div>
+    </div>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        const envInfoElement = document.getElementById('envInfo');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Check environment
+        document.getElementById('checkEnv').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Checking environment...';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Checking environment configuration');
+                
+                // Display environment information
+                const envInfo = {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    cookieEnabled: navigator.cookieEnabled,
+                    onLine: navigator.onLine
+                };
+                
+                envInfoElement.innerHTML = '<pre>' + JSON.stringify(envInfo, null, 2) + '</pre>';
+                
+                log('Environment info displayed');
+                resultDiv.innerHTML = '<h2>Environment Check Complete</h2><p>See environment info above.</p>';
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Environment check error: ${error.message}`);
+                console.error('Environment check error:', error);
+                resultDiv.innerHTML = `<h2>Environment Check Error</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

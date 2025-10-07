@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test QRCode Module Import</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test QRCode Module Import</h1>
+    <p>This tool tests importing the QRCode library as a module.</p>
+    
+    <button id="testImport">Test Module Import</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        // Function to load QRCode library with multiple fallbacks
+        async function loadQRCode() {
+            // Try multiple approaches
+            const approaches = [
+                // Approach 1: Load from unpkg CDN
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 2: Load from jsDelivr CDN (IIFE version)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 3: Load from jsDelivr CDN (alternative path)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                })
+            ];
+            
+            for (const approach of approaches) {
+                try {
+                    const QRCode = await approach();
+                    if (QRCode) {
+                        return QRCode;
+                    }
+                } catch (error) {
+                    console.warn('QRCode loading approach failed:', error);
+                }
+            }
+            
+            throw new Error('Failed to load QRCode library with all approaches');
+        }
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test importing QRCode as a module
+        document.getElementById('testImport').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing QRCode loading...';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Loading QRCode library with fallback approaches...');
+                const QRCode = await loadQRCode();
+                log('QRCode library loaded successfully');
+                log('QRCode type: ' + typeof QRCode);
+                
+                // Test generating a QR code
+                log('Generating QR code with loaded library...');
+                const qrCodeUrl = await QRCode.toDataURL('https://example.com', {
+                    width: 200,
+                    margin: 1
+                });
+                
+                log('QR code generated successfully');
+                log('QR code data URL length: ' + qrCodeUrl.length);
+                
+                resultDiv.innerHTML = `
+                    <h2>QRCode Loading Test Successful!</h2>
+                    <p>QRCode library loaded and working correctly.</p>
+                    <img src="${qrCodeUrl}" alt="Test QR Code" style="width: 100px; height: 100px;">
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`QRCode loading test failed: ${error.message}`);
+                console.error('QRCode loading test error:', error);
+                resultDiv.innerHTML = `<h2>QRCode Loading Test Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

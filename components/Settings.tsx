@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PatternManager from './PatternManager';
 
 interface SettingsProps {
   onBack: () => void;
@@ -11,6 +12,12 @@ interface UserSettings {
   selectedModel: string;
 }
 
+interface Pattern {
+  id: string;
+  name: string;
+  url: string;
+}
+
 // Define the usage statistics interface
 interface UsageStatistics {
   [apiKey: string]: number;
@@ -21,6 +28,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
   const [apiProvider, setApiProvider] = useState<'gemini' | 'openrouter'>('gemini');
   const [selectedModel, setSelectedModel] = useState('');
   const [usageStats, setUsageStats] = useState<UsageStatistics>({});
+  const [patterns, setPatterns] = useState<Pattern[]>([]);
 
   // Predefined models for each provider
   const models = {
@@ -66,7 +74,39 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
         console.error('Failed to parse usage statistics', e);
       }
     }
+    
+    // Load patterns
+    const savedPatterns = localStorage.getItem('customPatterns');
+    if (savedPatterns) {
+      try {
+        setPatterns(JSON.parse(savedPatterns));
+      } catch (e) {
+        console.error('Failed to parse patterns', e);
+        // Load default patterns
+        loadDefaultPatterns();
+      }
+    } else {
+      // Load default patterns
+      loadDefaultPatterns();
+    }
   }, []);
+
+  const loadDefaultPatterns = () => {
+    // Load default patterns from the constants
+    const defaultPatterns: Pattern[] = [
+      { id: 'pattern1', name: '青花瓷圖案1', url: '/img/pattern1.png' },
+      { id: 'pattern2', name: '青花瓷圖案2', url: '/img/pattern2.png' },
+      { id: 'pattern3', name: '青花瓷圖案3', url: '/img/pattern3.png' },
+      { id: 'pattern4', name: '青花瓷圖案4', url: '/img/pattern4.png' },
+      { id: 'pattern5', name: '青花瓷圖案5', url: '/img/pattern5.png' },
+      { id: 'pattern6', name: '青花瓷圖案6', url: '/img/pattern6.png' },
+      { id: 'pattern7', name: '青花瓷圖案7', url: '/img/pattern7.png' },
+      { id: 'pattern8', name: '青花瓷圖案8', url: '/img/pattern8.png' },
+      { id: 'pattern9', name: '青花瓷圖案9', url: '/img/pattern9.png' },
+      { id: 'pattern10', name: '青花瓷圖案10', url: '/img/pattern10.png' },
+    ];
+    setPatterns(defaultPatterns);
+  };
 
   const handleSave = () => {
     const settings: UserSettings = {
@@ -77,9 +117,14 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
     
     // Save to localStorage
     localStorage.setItem('userSettings', JSON.stringify(settings));
+    localStorage.setItem('customPatterns', JSON.stringify(patterns));
     
     // Notify parent component
     onSave(settings);
+  };
+
+  const handlePatternsChange = (newPatterns: Pattern[]) => {
+    setPatterns(newPatterns);
   };
 
   // Function to get the last 5 characters of the API key for display
@@ -222,6 +267,12 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
             ))}
           </div>
         </div>
+
+        {/* Pattern Management */}
+        <PatternManager 
+          patterns={patterns} 
+          onChange={handlePatternsChange} 
+        />
 
         {/* Usage Statistics Section */}
         {Object.keys(usageStats).length > 0 && (

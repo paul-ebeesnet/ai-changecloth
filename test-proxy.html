@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Proxy Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #1a202c; color: white; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; background-color: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #3182ce; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #48bb78; border: 1px solid #38a169; color: white; }
+        .error { background-color: #f56565; border: 1px solid #e53e3e; color: white; }
+        .info { background-color: #4299e1; border: 1px solid #3182ce; color: white; }
+        .log { height: 300px; overflow-y: scroll; background: #2d3748; color: #68d391; font-family: monospace; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Proxy Test</h1>
+    <p>This tool tests if the proxy is working correctly to connect to the backend server.</p>
+    
+    <button id="testProxy">Test Proxy Connection</button>
+    <button id="testUpload">Test Upload Through Proxy</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test proxy connection
+        document.getElementById('testProxy').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing proxy connection...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Testing proxy connection to /api/health');
+                
+                const response = await fetch('/api/health');
+                log('Response status: ' + response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Proxy connection failed: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log('Response data: ' + JSON.stringify(data, null, 2));
+                
+                resultDiv.innerHTML = `
+                    <h3>Proxy Connection Test Successful!</h3>
+                    <p><strong>Status:</strong> ${data.status}</p>
+                    <p><strong>Timestamp:</strong> ${data.timestamp}</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Proxy connection test error: ${error.message}`);
+                console.error('Proxy connection test error:', error);
+                
+                resultDiv.innerHTML = `
+                    <h3>Proxy Connection Test Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Possible causes:</p>
+                    <ul>
+                        <li>Backend server is not running</li>
+                        <li>Proxy configuration is incorrect</li>
+                        <li>Network connectivity issues</li>
+                    </ul>
+                `;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test upload through proxy
+        document.getElementById('testUpload').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing upload through proxy...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Testing upload through proxy...');
+                
+                // Create a simple test image (1x1 pixel PNG)
+                const testImageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                const testImage = `data:image/png;base64,${testImageData}`;
+                const filename = `proxy-test-${Date.now()}.png`;
+                
+                log('Test image created: ' + filename);
+                
+                // Upload through proxy
+                log('Sending request to /api/upload');
+                const startTime = Date.now();
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: testImage,
+                        filename: filename
+                    }),
+                });
+                
+                const endTime = Date.now();
+                log('Response status: ' + response.status + ' (took ' + (endTime - startTime) + 'ms)');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log('Error response body: ' + errorText);
+                    throw new Error(`Upload through proxy failed: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                log('Success response: ' + JSON.stringify(result, null, 2));
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+                
+                resultDiv.innerHTML = `
+                    <h3>Upload Through Proxy Test Successful!</h3>
+                    <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                    ${result.thumbnailUrl ? `<p><strong>Thumbnail URL:</strong> <a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a></p>` : ''}
+                    <p><strong>Message:</strong> ${result.message}</p>
+                    <p><strong>Response Time:</strong> ${endTime - startTime}ms</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Upload through proxy test error: ${error.message}`);
+                console.error('Upload through proxy test error:', error);
+                
+                resultDiv.innerHTML = `
+                    <h3>Upload Through Proxy Test Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Possible causes:</p>
+                    <ul>
+                        <li>Backend server is not running</li>
+                        <li>Proxy configuration is incorrect</li>
+                        <li>FTP connection issues</li>
+                        <li>File permissions issues</li>
+                    </ul>
+                `;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

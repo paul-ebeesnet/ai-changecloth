@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Image Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a202c;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d3748;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border: 2px solid green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Image Test</h1>
+        
+        <div class="test-section">
+            <h2>Thumbnail Test</h2>
+            <p>This should display the thumbnail:</p>
+            <img 
+                id="test-image"
+                src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685-thumb.png" 
+                alt="Test Thumbnail"
+                onload="console.log('✅ Image loaded successfully')"
+                onerror="console.log('❌ Image failed to load')"
+            >
+            <p id="status">Loading...</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Controls</h2>
+            <button onclick="reloadImage()">Reload Image</button>
+            <button onclick="checkImage()">Check Image Status</button>
+        </div>
+    </div>
+
+    <script>
+        const img = document.getElementById('test-image');
+        const status = document.getElementById('status');
+        
+        img.onload = function() {
+            status.innerHTML = `✅ Image loaded successfully<br>Dimensions: ${this.naturalWidth} x ${this.naturalHeight}`;
+        };
+        
+        img.onerror = function() {
+            status.innerHTML = '❌ Image failed to load';
+        };
+        
+        function reloadImage() {
+            const timestamp = Date.now();
+            img.src = 'https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867818685-thumb.png?v=' + timestamp;
+            status.innerHTML = 'Reloading...';
+        }
+        
+        function checkImage() {
+            const rect = img.getBoundingClientRect();
+            console.log('Image element:', img);
+            console.log('Image rect:', rect);
+            console.log('Natural dimensions:', {
+                width: img.naturalWidth,
+                height: img.naturalHeight
+            });
+            console.log('Display properties:', {
+                display: getComputedStyle(img).display,
+                visibility: getComputedStyle(img).visibility,
+                opacity: getComputedStyle(img).opacity
+            });
+            
+            alert(`Image status:
+- Loaded: ${img.complete}
+- Dimensions: ${img.naturalWidth} x ${img.naturalHeight}
+- Display: ${getComputedStyle(img).display}
+- Visibility: ${getComputedStyle(img).visibility}`);
+        }
+    </script>
+</body>
+</html>

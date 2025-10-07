@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complete Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #1a202c; color: white; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; background-color: #4299e1; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #3182ce; }
+        button:disabled { background-color: #718096; cursor: not-allowed; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #48bb78; border: 1px solid #38a169; color: white; }
+        .error { background-color: #f56565; border: 1px solid #e53e3e; color: white; }
+        .info { background-color: #4299e1; border: 1px solid #3182ce; color: white; }
+        .log { height: 300px; overflow-y: scroll; background: #2d3748; color: #68d391; font-family: monospace; padding: 10px; border-radius: 5px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #4a5568; border-radius: 5px; }
+        .test-section h3 { margin-top: 0; color: #63b3ed; }
+        .image-preview { max-width: 300px; margin: 10px 0; border: 1px solid #4a5568; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Complete Flow Test</h1>
+    <p>This tool tests the complete flow of the application including QRCode generation and PHP API upload.</p>
+    
+    <div class="test-section">
+        <h3>Step 1: Test QRCode Generation</h3>
+        <button id="testQRCode">Test QRCode Generation</button>
+        <div id="qrResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 2: Test PHP API Upload</h3>
+        <p>Upload a test image to the PHP API endpoint.</p>
+        <button id="testUpload">Test PHP API Upload</button>
+        <div id="uploadResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Step 3: Test Complete Flow</h3>
+        <p>Test the complete flow from image processing to upload and QR code generation.</p>
+        <button id="testCompleteFlow">Test Complete Flow</button>
+        <div id="completeFlowResult"></div>
+    </div>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        // Function to load QRCode library with fallbacks
+        const loadQRCodeLibrary = async () => {
+            // Try multiple approaches
+            const approaches = [
+                // Approach 1: Load from unpkg CDN
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 2: Load from jsDelivr CDN (IIFE version)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                
+                // Approach 3: Load from jsDelivr CDN (alternative path)
+                () => new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js';
+                    script.onload = () => resolve(window.QRCode);
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                })
+            ];
+            
+            for (const approach of approaches) {
+                try {
+                    const QRCode = await approach();
+                    if (QRCode) {
+                        return QRCode;
+                    }
+                } catch (error) {
+                    console.warn('QRCode loading approach failed:', error);
+                }
+            }
+            
+            throw new Error('Failed to load QRCode library with all approaches');
+        };
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test QRCode generation
+        document.getElementById('testQRCode').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('qrResult');
+            resultDiv.innerHTML = '<p>Testing QRCode generation...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCodeLibrary();
+                log('QRCode library loaded successfully');
+                log('QRCode type: ' + typeof QRCode);
+                
+                // Test QRCode generation
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL('https://ebeesnet.com/project/wynn-mif/img/test.png', {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                
+                log('QR code generated successfully');
+                log('QR code data URL length: ' + qrCodeUrl.length);
+                
+                resultDiv.innerHTML = `
+                    <h3>QRCode Test Successful!</h3>
+                    <p>QRCode library is working properly.</p>
+                    <img src="${qrCodeUrl}" alt="Test QR Code" class="image-preview">
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`QRCode test error: ${error.message}`);
+                console.error('QRCode test error:', error);
+                resultDiv.innerHTML = `<h3>QRCode Test Error</h3><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test PHP API upload
+        document.getElementById('testUpload').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('uploadResult');
+            resultDiv.innerHTML = '<p>Testing PHP API upload...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                // Create a simple test image (1x1 pixel PNG)
+                const testImageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                const testImage = `data:image/png;base64,${testImageData}`;
+                const filename = `test-artwork-${Date.now()}.png`;
+                
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCodeLibrary();
+                
+                // Generate QR code
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                
+                log('Sending request to PHP API...');
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: testImage,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                log('PHP API response status: ' + response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to upload image via PHP API: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                log('PHP API success response: ' + JSON.stringify(result));
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+                
+                resultDiv.innerHTML = `
+                    <h3>PHP API Upload Test Successful!</h3>
+                    <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                    ${result.thumbnailUrl ? `<p><strong>Thumbnail URL:</strong> <a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a></p>` : ''}
+                    <p><strong>Message:</strong> ${result.message}</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`PHP API upload test error: ${error.message}`);
+                console.error('PHP API upload test error:', error);
+                resultDiv.innerHTML = `<h3>PHP API Upload Test Error</h3><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test complete flow
+        document.getElementById('testCompleteFlow').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('completeFlowResult');
+            resultDiv.innerHTML = '<p>Testing complete flow...</p>';
+            resultDiv.className = 'info';
+            
+            try {
+                // Create a simple test image (1x1 pixel PNG)
+                const testImageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+                const testImage = `data:image/png;base64,${testImageData}`;
+                const filename = `complete-flow-test-${Date.now()}.png`;
+                
+                log('=== Starting Complete Flow Test ===');
+                
+                // Step 1: Load QRCode library
+                log('Step 1: Loading QRCode library...');
+                const QRCode = await loadQRCodeLibrary();
+                log('QRCode library loaded successfully');
+                
+                // Step 2: Generate QR code
+                log('Step 2: Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code generated successfully');
+                
+                // Step 3: Upload to PHP API
+                log('Step 3: Uploading to PHP API...');
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: testImage,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                log('PHP API response status: ' + response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to upload image via PHP API: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+                
+                const result = await response.json();
+                log('PHP API success response: ' + JSON.stringify(result));
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Upload was not successful');
+                }
+                
+                log('=== Complete Flow Test Successful ===');
+                
+                resultDiv.innerHTML = `
+                    <h3>Complete Flow Test Successful!</h3>
+                    <p>All steps completed successfully.</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+                        <div>
+                            <h4>Uploaded Image</h4>
+                            <img src="${result.url}" alt="Uploaded Image" class="image-preview">
+                        </div>
+                        ${result.thumbnailUrl ? `
+                        <div>
+                            <h4>Thumbnail</h4>
+                            <img src="${result.thumbnailUrl}" alt="Thumbnail" class="image-preview">
+                        </div>` : ''}
+                        <div>
+                            <h4>QR Code</h4>
+                            <img src="${qrCodeUrl}" alt="QR Code" class="image-preview">
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                        ${result.thumbnailUrl ? `<p><strong>Thumbnail URL:</strong> <a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a></p>` : ''}
+                        <p><strong>Message:</strong> ${result.message}</p>
+                    </div>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Complete flow test error: ${error.message}`);
+                console.error('Complete flow test error:', error);
+                resultDiv.innerHTML = `<h3>Complete Flow Test Error</h3><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

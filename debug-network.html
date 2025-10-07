@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Network</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Debug Network</h1>
+    <p>This tool tests network connectivity to the PHP API endpoint.</p>
+    
+    <div>
+        <label for="testUrl">Test URL:</label>
+        <input type="text" id="testUrl" value="https://ebeesnet.com/project/wynn-mif/upload.php" style="width: 100%;">
+    </div>
+    
+    <button id="testConnectivity">Test Connectivity</button>
+    <button id="testOptions">Test OPTIONS Request</button>
+    <button id="testPost">Test POST Request</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test basic connectivity
+        document.getElementById('testConnectivity').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing connectivity...';
+            resultDiv.className = 'info';
+            
+            const testUrl = document.getElementById('testUrl').value;
+            
+            try {
+                log(`Testing connectivity to: ${testUrl}`);
+                
+                // Test basic fetch
+                const startTime = Date.now();
+                const response = await fetch(testUrl, { method: 'HEAD' });
+                const endTime = Date.now();
+                
+                log(`HEAD request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                log(`Response headers: ${[...response.headers.entries()].map(([k, v]) => `${k}: ${v}`).join(', ')}`);
+                
+                resultDiv.innerHTML = `
+                    <h2>Connectivity Test Successful</h2>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response time:</strong> ${endTime - startTime}ms</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Connectivity test failed: ${error.message}`);
+                console.error('Connectivity test error:', error);
+                resultDiv.innerHTML = `<h2>Connectivity Test Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test OPTIONS request (preflight)
+        document.getElementById('testOptions').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing OPTIONS request...';
+            resultDiv.className = 'info';
+            
+            const testUrl = document.getElementById('testUrl').value;
+            
+            try {
+                log(`Testing OPTIONS request to: ${testUrl}`);
+                
+                const startTime = Date.now();
+                const response = await fetch(testUrl, { 
+                    method: 'OPTIONS',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const endTime = Date.now();
+                
+                log(`OPTIONS request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                log(`Response headers: ${[...response.headers.entries()].map(([k, v]) => `${k}: ${v}`).join(', ')}`);
+                
+                // Log specific CORS headers
+                const corsHeaders = ['access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers'];
+                corsHeaders.forEach(header => {
+                    const value = response.headers.get(header);
+                    if (value) {
+                        log(`CORS header ${header}: ${value}`);
+                    }
+                });
+                
+                resultDiv.innerHTML = `
+                    <h2>OPTIONS Request Successful</h2>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response time:</strong> ${endTime - startTime}ms</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`OPTIONS request failed: ${error.message}`);
+                console.error('OPTIONS request error:', error);
+                resultDiv.innerHTML = `<h2>OPTIONS Request Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test POST request with minimal data
+        document.getElementById('testPost').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing POST request...';
+            resultDiv.className = 'info';
+            
+            const testUrl = document.getElementById('testUrl').value;
+            
+            try {
+                log(`Testing POST request to: ${testUrl}`);
+                
+                // Create minimal test data
+                const testData = {
+                    image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+                    filename: 'network-test.png'
+                };
+                
+                log('Sending minimal test data');
+                
+                const startTime = Date.now();
+                const response = await fetch(testUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                const endTime = Date.now();
+                
+                log(`POST request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response body: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`Response body: ${JSON.stringify(result, null, 2)}`);
+                
+                resultDiv.innerHTML = `
+                    <h2>POST Request Successful</h2>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response time:</strong> ${endTime - startTime}ms</p>
+                    <p><strong>Success:</strong> ${result.success}</p>
+                    <p><strong>Message:</strong> ${result.message || result.error || 'No message'}</p>
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`POST request failed: ${error.message}`);
+                console.error('POST request error:', error);
+                resultDiv.innerHTML = `<h2>POST Request Failed</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

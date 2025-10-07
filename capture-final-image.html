@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Capture Final Image</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+        #imagePreview { max-width: 100%; height: auto; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Capture Final Image</h1>
+    <p>This tool captures and displays the exact image that would be sent by the application.</p>
+    
+    <button id="captureImage">Capture Test Image</button>
+    <button id="testUpload">Test Upload</button>
+    <button id="clearImage">Clear</button>
+    
+    <div>
+        <h3>Image Preview:</h3>
+        <img id="imagePreview">
+    </div>
+    
+    <div>
+        <h3>Image Data:</h3>
+        <textarea id="imageData" placeholder="Image data will appear here..."></textarea>
+    </div>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <!-- Include QRCode library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <script>
+        const logElement = document.getElementById('log');
+        const imagePreview = document.getElementById('imagePreview');
+        const imageDataTextarea = document.getElementById('imageData');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Capture a test image that simulates what the app generates
+        document.getElementById('captureImage').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Capturing test image...';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Creating test image similar to app output');
+                
+                // Create a canvas and draw an image similar to what the app generates
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 600;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw background similar to what the app might generate
+                const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+                gradient.addColorStop(0, '#87CEEB');
+                gradient.addColorStop(1, '#E0F7FA');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 800, 600);
+                
+                // Draw frame
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 20;
+                ctx.strokeRect(30, 30, 740, 540);
+                
+                // Draw person (simplified)
+                ctx.fillStyle = '#4CAF50';
+                ctx.beginPath();
+                ctx.arc(400, 200, 60, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#2196F3';
+                ctx.fillRect(350, 260, 100, 200);
+                
+                // Draw costume pattern
+                ctx.fillStyle = '#FF5722';
+                ctx.beginPath();
+                ctx.arc(300, 300, 20, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(500, 350, 20, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Draw text
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('AI Generated Artwork', 400, 500);
+                
+                // Convert to base64
+                const imageData = canvas.toDataURL('image/png');
+                
+                // Display the image
+                imagePreview.src = imageData;
+                imageDataTextarea.value = imageData;
+                
+                log('Test image created and displayed');
+                resultDiv.innerHTML = '<h2>Test Image Captured</h2><p>Image is ready for upload testing.</p>';
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`Image capture error: ${error.message}`);
+                console.error('Image capture error:', error);
+                resultDiv.innerHTML = `<h2>Image Capture Error</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Test upload with the captured image
+        document.getElementById('testUpload').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing upload...';
+            resultDiv.className = 'info';
+            
+            try {
+                const imageData = imageDataTextarea.value;
+                
+                if (!imageData) {
+                    throw new Error('No image data to upload. Please capture an image first.');
+                }
+                
+                log('Starting upload test with captured image');
+                log(`Image data size: ${imageData.length} characters`);
+                
+                // Generate filename
+                const filename = `captured-artwork-${Date.now()}.png`;
+                log(`Generated filename: ${filename}`);
+                
+                // Generate QR code
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL(`https://ebeesnet.com/project/wynn-mif/img/${filename}`, {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                log('QR code generated');
+                
+                // Send request
+                log('Sending request to PHP API...');
+                const startTime = Date.now();
+                
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        filename: filename,
+                        qrCodeImage: qrCodeUrl
+                    }),
+                });
+                
+                const endTime = Date.now();
+                log(`Request completed in ${endTime - startTime}ms`);
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`Error response body: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                log(`Response body: ${JSON.stringify(result, null, 2)}`);
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `
+                        <h2>Upload Successful!</h2>
+                        <p><strong>Image URL:</strong> <a href="${result.url}" target="_blank">${result.url}</a></p>
+                        <p><strong>Thumbnail URL:</strong> ${result.thumbnailUrl ? `<a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a>` : 'Not generated'}</p>
+                        <p><strong>Message:</strong> ${result.message}</p>
+                    `;
+                    resultDiv.className = 'success';
+                    log('Upload test completed successfully');
+                } else {
+                    resultDiv.innerHTML = `<h2>Upload Failed</h2><p><strong>Error:</strong> ${result.error}</p>`;
+                    resultDiv.className = 'error';
+                    log(`Upload failed: ${result.error}`);
+                }
+            } catch (error) {
+                log(`Upload error: ${error.message}`);
+                console.error('Upload error:', error);
+                resultDiv.innerHTML = `<h2>Upload Error</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+        
+        // Clear the image
+        document.getElementById('clearImage').addEventListener('click', () => {
+            imagePreview.src = '';
+            imageDataTextarea.value = '';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('result').className = '';
+            clearLog();
+            log('Image cleared');
+        });
+    </script>
+</body>
+</html>

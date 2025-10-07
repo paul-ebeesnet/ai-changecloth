@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thumbnail Display Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #1a202c;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background-color: #2d3748;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .image-container {
+            position: relative;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .thumbnail-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thumbnail Display Debug</h1>
+        
+        <div class="test-section">
+            <h2>Test 1: Direct Image Display</h2>
+            <p>Testing the reported thumbnail URL directly:</p>
+            <p><strong>URL:</strong> https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png</p>
+            
+            <div id="direct-test" class="image-container">
+                <img id="direct-image" src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png" alt="Direct Thumbnail Test">
+                <div class="thumbnail-overlay">縮圖預覽</div>
+            </div>
+            <p id="direct-result">Loading...</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Image with Error Handling</h2>
+            <p>Testing with error handling:</p>
+            
+            <div id="error-test" class="image-container">
+                <img id="error-image" 
+                     src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png" 
+                     alt="Error Handling Test"
+                     onerror="document.getElementById('error-result').innerHTML = '❌ Image failed to load';"
+                     onload="document.getElementById('error-result').innerHTML = '✅ Image loaded successfully';">
+                <div class="thumbnail-overlay">縮圖預覽</div>
+            </div>
+            <p id="error-result">Loading...</p>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Fallback Test</h2>
+            <p>Testing fallback behavior:</p>
+            
+            <div id="fallback-test">
+                <div id="thumbnail-container" class="image-container hidden">
+                    <img id="thumbnail-image" 
+                         src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png" 
+                         alt="Thumbnail with Fallback">
+                    <div class="thumbnail-overlay">縮圖預覽</div>
+                </div>
+                <div id="full-image-container" class="image-container">
+                    <img id="full-image" 
+                         src="https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807.png" 
+                         alt="Full Image Fallback">
+                </div>
+            </div>
+            <button onclick="toggleImage()">Toggle Image Display</button>
+        </div>
+    </div>
+
+    <script>
+        // Test 1: Direct image loading
+        const directImage = document.getElementById('direct-image');
+        const directResult = document.getElementById('direct-result');
+        
+        directImage.onload = function() {
+            directResult.innerHTML = '✅ Direct image loaded successfully';
+        };
+        
+        directImage.onerror = function() {
+            directResult.innerHTML = '❌ Direct image failed to load';
+        };
+        
+        // Test 3: Fallback toggle
+        function toggleImage() {
+            const thumbnailContainer = document.getElementById('thumbnail-container');
+            const fullImageContainer = document.getElementById('full-image-container');
+            
+            if (thumbnailContainer.classList.contains('hidden')) {
+                thumbnailContainer.classList.remove('hidden');
+                fullImageContainer.classList.add('hidden');
+            } else {
+                thumbnailContainer.classList.add('hidden');
+                fullImageContainer.classList.remove('hidden');
+            }
+        }
+        
+        // Check if image exists and is accessible
+        fetch('https://ebeesnet.com/project/wynn-mif/img/ai-artwork-1759867137807-thumb.png')
+            .then(response => {
+                if (response.ok) {
+                    console.log('Image is accessible via fetch');
+                } else {
+                    console.log('Image is not accessible via fetch, status:', response.status);
+                }
+            })
+            .catch(error => {
+                console.log('Fetch error:', error);
+            });
+    </script>
+</body>
+</html>

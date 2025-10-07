@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Upload Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        textarea { width: 100%; height: 200px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>Debug Upload Test</h1>
+    <p>This page tests the PHP API with a real image data similar to what the frontend sends</p>
+    
+    <div>
+        <label for="imageData">Image Data (base64):</label>
+        <textarea id="imageData" placeholder="Paste base64 image data here..."></textarea>
+    </div>
+    
+    <div>
+        <label for="filename">Filename:</label>
+        <input type="text" id="filename" value="debug-artwork-12345.png" style="width: 100%;">
+    </div>
+    
+    <button id="testButton">Test Upload</button>
+    <button id="generateImageButton">Generate Test Image</button>
+    <div id="result"></div>
+
+    <script>
+        // Generate a test image when button is clicked
+        document.getElementById('generateImageButton').addEventListener('click', () => {
+            // Create a canvas and draw a simple test image
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw a simple pattern
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(0, 0, 200, 200);
+            
+            ctx.fillStyle = '#FF5722';
+            ctx.beginPath();
+            ctx.arc(100, 100, 50, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Test Image', 100, 105);
+            
+            // Convert to base64
+            const dataUrl = canvas.toDataURL('image/png');
+            document.getElementById('imageData').value = dataUrl;
+        });
+        
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            const imageData = document.getElementById('imageData').value;
+            const filename = document.getElementById('filename').value;
+            
+            if (!imageData || !filename) {
+                resultDiv.innerHTML = 'Please provide both image data and filename';
+                resultDiv.className = 'error';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing...';
+            resultDiv.className = 'info';
+            
+            try {
+                console.log('Sending request to PHP API...');
+                const response = await fetch('https://ebeesnet.com/project/wynn-mif/upload.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: imageData,
+                        filename: filename
+                    }),
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('Response body:', result);
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `
+                        <h2>Success!</h2>
+                        <p>Image URL: <a href="${result.url}" target="_blank">${result.url}</a></p>
+                        <p>Thumbnail URL: ${result.thumbnailUrl ? `<a href="${result.thumbnailUrl}" target="_blank">${result.thumbnailUrl}</a>` : 'Not generated'}</p>
+                        <p>Message: ${result.message}</p>
+                    `;
+                    resultDiv.className = 'success';
+                } else {
+                    resultDiv.innerHTML = `<h2>Error:</h2><p>${result.error}</p>`;
+                    resultDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Test error:', error);
+                resultDiv.innerHTML = `<h2>Error:</h2><p>${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

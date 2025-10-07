@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test QR Code Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; font-size: 16px; margin: 10px 0; }
+        #result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .log { height: 200px; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test QR Code Fix</h1>
+    <p>This tool tests the updated QRCode loading mechanism in ftpUploadService.ts</p>
+    
+    <button id="testQRCode">Test QRCode Generation</button>
+    
+    <div>
+        <h3>Logs:</h3>
+        <div id="log" class="log"></div>
+    </div>
+    
+    <div id="result"></div>
+
+    <script type="module">
+        // Function to simulate the updated loadQRCodeLibrary function
+        const loadQRCodeLibrary = async () => {
+            // First check if QRCode is already available (from import)
+            if (typeof window.QRCode !== 'undefined') {
+                console.log('QRCode library already available from import');
+                return window.QRCode;
+            }
+            
+            // If not available, try to load it dynamically with fallbacks
+            console.log('QRCode library not available from import, trying dynamic loading...');
+            
+            const cdnUrls = [
+                'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js',
+                'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js',
+                'https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js'
+            ];
+            
+            for (const url of cdnUrls) {
+                try {
+                    console.log(`Trying to load QRCode from: ${url}`);
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = url;
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                    
+                    // Check if QRCode is now available
+                    if (typeof window.QRCode !== 'undefined') {
+                        console.log('QRCode library loaded successfully from CDN');
+                        return window.QRCode;
+                    }
+                } catch (error) {
+                    console.warn(`Failed to load QRCode from ${url}:`, error);
+                }
+            }
+            
+            throw new Error('Failed to load QRCode library from all CDN sources');
+        };
+        
+        const logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            logElement.textContent = '';
+        }
+        
+        // Test QRCode generation
+        document.getElementById('testQRCode').addEventListener('click', async () => {
+            clearLog();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing QRCode generation...';
+            resultDiv.className = 'info';
+            
+            try {
+                log('Loading QRCode library...');
+                const QRCode = await loadQRCodeLibrary();
+                log('QRCode library loaded successfully');
+                log('QRCode type: ' + typeof QRCode);
+                
+                // Test QRCode generation
+                log('Generating QR code...');
+                const qrCodeUrl = await QRCode.toDataURL('https://ebeesnet.com/project/wynn-mif/img/test.png', {
+                    width: 300,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                });
+                
+                log('QR code generated successfully');
+                log('QR code data URL length: ' + qrCodeUrl.length);
+                
+                resultDiv.innerHTML = `
+                    <h2>QRCode Test Successful!</h2>
+                    <p>QRCode library is working properly.</p>
+                    <img src="${qrCodeUrl}" alt="Test QR Code" style="width: 200px; height: 200px;">
+                `;
+                resultDiv.className = 'success';
+            } catch (error) {
+                log(`QRCode test error: ${error.message}`);
+                console.error('QRCode test error:', error);
+                resultDiv.innerHTML = `<h2>QRCode Test Error</h2><p><strong>Error:</strong> ${error.message}</p>`;
+                resultDiv.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>
