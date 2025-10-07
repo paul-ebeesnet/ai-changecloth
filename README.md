@@ -7,7 +7,7 @@
 - 使用 AI 技術將現代照片轉換為傳統中國水墨畫風格的古裝造型
 - 支援相機拍照和照片上傳
 - 自動生成 QR Code 便於分享
-- 支援 FTP 上傳和圖片托管
+- 支援多種圖片托管方案 (FTP, Cloudinary)
 
 ## 開發環境設置
 
@@ -32,7 +32,8 @@ cp .env.example .env
 
 需要設置的環境變數：
 - `GEMINI_API_KEY`: Google AI Studio 的 API 金鑰
-- `REACT_APP_BACKEND_URL`: 部署後端服務的 URL (用於生產環境)
+- `REACT_APP_BACKEND_URL`: 部署後端服務的 URL (用於生產環境，可選)
+- `CLOUDINARY_CLOUD_NAME`: Cloudinary 雲名稱 (用於 Vercel 部署，推薦)
 
 ### 開發模式運行
 
@@ -46,6 +47,33 @@ npm install
 npm run dev
 ```
 
+## API 配額管理
+
+### Google Gemini API 配額限制
+
+Google Gemini API 免費版有以下限制：
+- 每分鐘請求數量限制
+- 每日請求數量限制
+- 輸入 token 數量限制
+
+當遇到配額限制時，應用會顯示相應的錯誤信息並提供解決方案。
+
+### 解決配額限制的建議
+
+1. **切換到 OpenRouter**：
+   - 在應用設定中切換 API 提供商到 OpenRouter
+   - OpenRouter 通常提供更高的免費配額
+
+2. **輪換 API 金鑰**：
+   - 創建多個 Google AI Studio 帳戶獲取多個 API 金鑰
+   - 在應用中輪換使用不同的金鑰
+
+3. **升級到付費計劃**：
+   - Google AI Studio 提供付費計劃以獲得更高配額
+
+4. **等待配額重置**：
+   - Google Gemini API 配额通常在每日 UTC 時間重置
+
 ## 部署指南
 
 ### 部署到 Vercel (前端)
@@ -54,7 +82,22 @@ npm run dev
 2. 在 Vercel 上導入項目
 3. 設置環境變數：
    - `GEMINI_API_KEY`: 你的 Google AI Studio API 金鑰
-   - `REACT_APP_BACKEND_URL`: 你的後端服務 URL
+   - `CLOUDINARY_CLOUD_NAME`: 你的 Cloudinary 雲名稱 (推薦)
+   - `REACT_APP_BACKEND_URL`: 你的後端服務 URL (可選)
+
+### Cloudinary 設置 (推薦用於 Vercel 部署)
+
+Cloudinary 是一個雲端圖片和視頻管理平台，與 Vercel 等無伺服器環境完美配合。
+
+1. 註冊 Cloudinary 帳戶: https://cloudinary.com/
+2. 登入儀表板獲取你的 `Cloud Name`
+3. 在環境變數中設置 `CLOUDINARY_CLOUD_NAME`
+4. 創建一個上傳預設 (Upload Preset)：
+   - 進入 Settings > Upload
+   - 點擊 "Add upload preset"
+   - 設置名稱為 `ai_changecloth`
+   - 設置為 "Unsigned"
+   - 保存預設
 
 ### 部署後端服務
 
@@ -96,9 +139,17 @@ npm run dev
 
 這是預期行為。Vercel 是無伺服器平台，不支持長期運行的後端服務。請確保：
 
-1. 你已將後端服務部署到支持的平台
-2. 前端環境變數 `REACT_APP_BACKEND_URL` 已正確設置
-3. 後端服務可從互聯網訪問
+1. 你已將後端服務部署到支持的平台，或
+2. 使用 Cloudinary 作為替代方案 (推薦)
+
+### Google API 配額限制
+
+如果遇到配額限制錯誤：
+
+1. 切換到 OpenRouter 提供商
+2. 等待配額重置（通常在每日 UTC 時間）
+3. 輪換使用多個 API 金鑰
+4. 考慮升級到付費計劃
 
 ### 相機在 iPad 上無法使用
 
@@ -121,4 +172,5 @@ npm run dev
 - AI: Google Gemini API
 - 圖片處理: Sharp (縮圖生成)
 - FTP: basic-ftp
+- 雲存儲: Cloudinary (推薦用於 Vercel)
 - 部署: Vercel (前端), 自託管 (後端)

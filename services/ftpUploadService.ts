@@ -1,7 +1,7 @@
 import QRCode from 'qrcode';
 
 // Since we can't directly upload to FTP from the browser due to security restrictions,
-// we'll use our backend service as the primary method for image hosting
+// we'll use multiple methods for image hosting depending on the environment
 
 export interface UploadResult {
   imageUrl: string;
@@ -10,7 +10,65 @@ export interface UploadResult {
 }
 
 /**
+ * Uploads an image to Cloudinary and generates a QR code for the final URL.
+ * This is our new primary method for image hosting that works well with Vercel.
+ * 
+ * @param base64Image The base64 encoded image to upload
+ * @param filename The filename to use (will be used as public ID on Cloudinary)
+ * @returns Promise resolving to the upload result with image URL and QR code
+ */
+export const uploadToCloudinary = async (base64Image: string, filename: string): Promise<UploadResult> => {
+  try {
+    // Extract the base64 data part (remove the data:image/png;base64, prefix)
+    const base64Data = base64Image.split(',')[1];
+    
+    // Create FormData for Cloudinary upload
+    const formData = new FormData();
+    formData.append('file', `data:image/png;base64,${base64Data}`);
+    formData.append('upload_preset', 'ai_changecloth'); // You'll need to create this in your Cloudinary account
+    formData.append('public_id', filename.replace('.png', ''));
+    
+    // Try to upload to Cloudinary
+    // Note: This uses a unsigned upload which is less secure but works without backend
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME || 'your-cloud-name'}/image/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to upload image to Cloudinary: ${errorData.error?.message || response.statusText}`);
+    }
+    
+    const result = await response.json();
+    const imageUrl = result.secure_url;
+    
+    // Generate thumbnail URL (Cloudinary can generate thumbnails on-the-fly)
+    const thumbnailUrl = result.secure_url.replace('/upload/', '/upload/c_limit,h_800,w_800/q_auto:low/');
+    
+    // Generate QR code for the image URL
+    const qrCodeUrl = await QRCode.toDataURL(imageUrl, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    });
+    
+    return {
+      imageUrl,
+      qrCodeUrl,
+      thumbnailUrl
+    };
+  } catch (error) {
+    throw new Error(`Failed to upload image or generate QR code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+/**
  * Primary implementation using FTP via our backend service
+ * This is used when a backend URL is configured
  * 
  * @param base64Image The base64 encoded image to upload
  * @param filename The filename to use for the uploaded image
@@ -81,7 +139,7 @@ export const uploadToFTP = async (base64Image: string, filename: string): Promis
 
 /**
  * Fallback method that generates a QR code with a helpful message
- * This is used when FTP upload fails
+ * This is used when all other upload methods fail
  * 
  * @param base64Image The base64 encoded image
  * @returns Promise resolving to the upload result with a helpful message and QR code

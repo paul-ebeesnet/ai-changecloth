@@ -155,9 +155,15 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
           />
           <div className="mt-2 text-sm text-gray-400">
             {apiProvider === 'gemini' ? (
-              <p>從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a> 獲取您的 API 金鑰</p>
+              <div>
+                <p>從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a> 獲取您的 API 金鑰</p>
+                <p className="mt-1 text-yellow-300">注意：Google Gemini 免費配額有限，如果遇到配額限制，建議切換到 OpenRouter</p>
+              </div>
             ) : (
-              <p>從 <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OpenRouter</a> 獲取您的 API 金鑰</p>
+              <div>
+                <p>從 <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">OpenRouter</a> 獲取您的 API 金鑰</p>
+                <p className="mt-1 text-green-300">OpenRouter 提供多種模型選擇，通常有更高的免費配額</p>
+              </div>
             )}
           </div>
           
@@ -176,6 +182,24 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
               </div>
             </div>
           )}
+          
+          {/* API Provider Information */}
+          <div className="mt-3 p-3 bg-gray-700 rounded-lg">
+            <div className="text-sm">
+              <div className="font-medium mb-1">API 提供商資訊</div>
+              {apiProvider === 'gemini' ? (
+                <div className="text-gray-300">
+                  <p>• Google Gemini: 免費但配額有限</p>
+                  <p>• 建議在配額用完時切換到 OpenRouter</p>
+                </div>
+              ) : (
+                <div className="text-gray-300">
+                  <p>• OpenRouter: 支持多種模型，通常配額更高</p>
+                  <p>• 可以在免費配额用完后升级到付费计划</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div>
@@ -215,6 +239,23 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onSave }) => {
             </div>
           </div>
         )}
+        
+        {/* Quota Management Help */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            配額管理提示
+          </label>
+          <div className="p-3 bg-blue-900/30 rounded-lg text-sm text-blue-200">
+            <p className="font-medium mb-1">遇到配額限制時的解決方案：</p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>切換到 OpenRouter 提供商（通常有更高配額）</li>
+              <li>等待配額重置（Google Gemini 每日重置）</li>
+              <li>升級到付費計劃以獲得更高配額</li>
+              <li>輪換使用多個 API 金鑰來分散使用量</li>
+            </ol>
+            <p className="mt-2 text-yellow-300">提示：OpenRouter 通常提供更好的免費配額，建議優先使用。</p>
+          </div>
+        </div>
 
         <div className="flex justify-end gap-3 pt-4">
           <button

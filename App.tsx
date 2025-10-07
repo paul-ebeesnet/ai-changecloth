@@ -3,7 +3,7 @@ import { AppState } from './types';
 import { FIXED_BACKGROUND, FIXED_FRAME, getRandomPattern } from './constants';
 import { fileToBase64, compositeWithBackground, compositeWithFrame, removeGreenBackground } from './utils/imageUtils';
 import { transformImageWithAI } from './services/aiService';
-import { uploadToFTP, generateQRCodeFromDataUrl } from './services/ftpUploadService';
+import { uploadToCloudinary, uploadToFTP, generateQRCodeFromDataUrl } from './services/ftpUploadService';
 import LoadingOverlay from './components/LoadingOverlay';
 import Settings from './components/Settings';
 
@@ -158,6 +158,15 @@ const App: React.FC = () => {
         const isiOS = navigator.userAgent.match(/iPhone|iPad|iPod/i) !== null;
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         
+        console.log('Camera support check:', {
+          hasMediaDevices: !!navigator.mediaDevices,
+          hasGetUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+          isiPad,
+          isiOS,
+          isSafari,
+          userAgent: navigator.userAgent
+        });
+        
         if (isiPad || isiOS) {
           if (isSafari) {
             throw new Error('Safari瀏覽器應支援相機功能。請確保您已授予相機權限，並刷新頁面重試。');
@@ -187,34 +196,74 @@ const App: React.FC = () => {
         };
       }
       
+      console.log('Requesting camera with constraints:', constraints);
       streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
       
       // 添加调试信息
       console.log('Camera stream acquired:', streamRef.current);
+      console.log('Stream tracks:', streamRef.current.getTracks());
       
       if (videoRef.current) {
         videoRef.current.srcObject = streamRef.current;
         
         // iOS设备特殊处理：等待视频元数据加载完成后播放
         if (isiOS) {
+          const playVideo = () => {
+            if (videoRef.current) {
+              // Add a small delay to ensure the stream is ready
+              setTimeout(() => {
+                console.log('Attempting to play video on iOS');
+                videoRef.current!.play().catch(err => {
+                  console.error('iOS video play error:', err);
+                  handleError('無法播放視頻流，請檢查：\n1. 已授予相機權限\n2. 沒有其他應用正在使用相機\n3. 嘗試刷新頁面\n4. 如果問題持續，請使用Safari瀏覽器', err);
+                });
+              }, 100);
+            }
+          };
+          
+          // Try to play immediately
+          playVideo();
+          
+          // Also try to play after metadata is loaded
           videoRef.current.addEventListener('loadedmetadata', () => {
             console.log('Video metadata loaded');
-            videoRef.current!.play().catch(err => {
-              console.error('iOS video play error:', err);
-              handleError('無法播放視頻流，請檢查相機權限', err);
-            });
+            playVideo();
           });
           
           // 添加播放事件监听
           videoRef.current.addEventListener('play', () => {
-            console.log('Video playing');
+            console.log('Video playing successfully');
+          });
+          
+          // Add error listener
+          videoRef.current.addEventListener('error', (err) => {
+            console.error('Video element error:', err);
           });
         }
       }
       setAppState(AppState.CAMERA_PREVIEW);
     } catch (err: any) {
       console.error('Camera error:', err);
-      handleError('無法開啟相機', err);
+      
+      // 提供更详细的错误信息
+      let detailedMessage = '無法開啟相機';
+      if (err) {
+        if (err.name === 'NotAllowedError') {
+          detailedMessage = '相機訪問被拒絕。請確保已授予相機權限，並刷新頁面重試。在iPad上，請確保您點擊了允許相機訪問的提示。';
+        } else if (err.name === 'NotFoundError') {
+          detailedMessage = '未找到相機設備。請確認您的設備有相機並已正確連接。iPad可能需要特定的相機配置。';
+        } else if (err.name === 'NotReadableError') {
+          detailedMessage = '相機正在被其他應用程式使用。請關閉其他使用相機的應用程式後重試。在iPad上，請完全關閉其他相機應用。';
+        } else if (err.name === 'OverconstrainedError') {
+          detailedMessage = '相機不支援所需的設定。iPad相機可能需要不同的解析度設定。';
+        } else if (err.name === 'SecurityError') {
+          detailedMessage = '由於安全限制，無法訪問相機。請確保您在安全的HTTPS環境下運行（本地開發環境除外）。iPad上的Chrome可能需要特殊權限。';
+        } else if (err.message) {
+          detailedMessage = `無法開啟相機: ${err.message}`;
+        }
+      }
+      
+      handleError(detailedMessage, err);
     }
   };
 
@@ -273,7 +322,12 @@ const App: React.FC = () => {
       // Handle region restriction error with a user-friendly message
       if (err.message && err.message.includes("地區暫時不支持")) {
         handleError(err.message, err);
-      } else {
+      } 
+      // Handle quota exceeded error
+      else if (err.message && (err.message.includes("配額已用完") || err.message.includes("quota") || err.message.includes("RESOURCE_EXHAUSTED"))) {
+        handleError('API 配額已用完。請嘗試以下解決方案：\n1. 等待幾分鐘後重試\n2. 在設定中切換到 OpenRouter 提供商\n3. 升級您的 Google AI API 計劃', err);
+      }
+      else {
         handleError(err instanceof Error ? err.message : 'AI 圖片處理失敗', err);
       }
     }
@@ -320,7 +374,18 @@ const App: React.FC = () => {
       const filename = `ai-artwork-${Date.now()}.png`;
       
       try {
-        // Use FTP upload as the primary method
+        // In production (Vercel), try Cloudinary first as it works better with serverless environments
+        if (process.env.NODE_ENV === 'production') {
+          // Check if Cloudinary is configured
+          if (process.env.CLOUDINARY_CLOUD_NAME) {
+            const result = await uploadToCloudinary(finalImage, filename);
+            setUploadResult(result);
+            setLoadingMessage('');
+            return;
+          }
+        }
+        
+        // Use FTP upload as the primary method (in development or when Cloudinary is not configured)
         const result = await uploadToFTP(finalImage, filename);
         setUploadResult(result);
         setLoadingMessage('');
@@ -468,7 +533,7 @@ const App: React.FC = () => {
                 className="text-gray-400 hover:text-gray-200 text-sm flex items-center justify-center mx-auto"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.533 1.533 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                 </svg>
                 設定
               </button>

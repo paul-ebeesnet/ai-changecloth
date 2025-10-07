@@ -111,6 +111,12 @@ const transformWithGemini = async (
     if (error.message && error.message.includes("User location is not supported")) {
       throw new Error("抱歉，您所在的地區暫時不支持AI換裝功能。請嘗試在其他地區訪問此應用，或聯繫管理員。");
     }
+    
+    // Check if this is a quota exceeded error
+    if (error.message && error.message.includes("quota") && error.message.includes("exceeded")) {
+      throw new Error("您的 Google AI API 配額已用完。請嘗試以下解決方案：\n1. 等待幾分鐘後重試\n2. 在設定中切換到 OpenRouter 提供商\n3. 升級您的 Google AI API 計劃");
+    }
+    
     // Re-throw other errors
     throw error;
   }
@@ -176,6 +182,12 @@ Output: Your response must contain ONLY the modified image in traditional Chines
 
     if (!response.ok) {
       const errorText = await response.text();
+      
+      // Check if this is a quota exceeded error
+      if (response.status === 429 || (errorText && errorText.includes("quota"))) {
+        throw new Error("您的 OpenRouter API 配額已用完或請求過於頻繁。請稍後重試或在 OpenRouter 官網檢查您的配額狀態。");
+      }
+      
       throw new Error(`OpenRouter API 錯誤 (${response.status}): ${errorText}`);
     }
 
