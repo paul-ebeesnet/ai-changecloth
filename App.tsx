@@ -291,52 +291,8 @@ const App: React.FC = () => {
           const settings = track.getSettings();
           console.log('Camera settings:', settings);
           
-          // 等待視頻元素被掛載
-          const setupVideoElement = () => {
-            if (videoRef.current) {
-              console.log('Setting up video element...');
-              
-              // 設置視頻元素
-              videoRef.current.srcObject = streamRef.current;
-              
-              // 設置iPad特定的屬性（基於診斷工具的成功配置）
-              videoRef.current.playsInline = true;
-              videoRef.current.muted = true;
-              videoRef.current.autoplay = true;
-              videoRef.current.setAttribute('webkit-playsinline', 'true');
-              
-              // 確保視頻正確顯示
-              videoRef.current.style.backgroundColor = '#000';
-              videoRef.current.style.objectFit = 'cover';
-              videoRef.current.style.display = 'block';
-              
-              console.log('Video element setup complete');
-              return true;
-            }
-            return false;
-          };
-          
-          // 立即嘗試設置，如果失敗則等待
-          if (!setupVideoElement()) {
-            console.log('Video element not ready, waiting...');
-            // 等待視頻元素被掛載
-            setTimeout(() => {
-              if (!setupVideoElement()) {
-                console.error('Video element still not available after delay');
-                setLoadingMessage('');
-                handleError('視頻元素未正確掛載', new Error('Video element not mounted'));
-                return;
-              }
-              setupVideoPlayback();
-            }, 100);
-            return;
-          }
-          
-          setupVideoPlayback();
-        }
-        
-        const setupVideoPlayback = () => {
-          if (videoRef.current) {
+          // 設置視頻播放邏輯
+          const setupVideoPlayback = () => {
             // 監聽視頻事件（基於診斷工具的成功邏輯）
             const handleLoadedMetadata = () => {
               console.log('Video metadata loaded on iPad');
@@ -364,7 +320,7 @@ const App: React.FC = () => {
             const attemptPlay = async () => {
               try {
                 console.log('Attempting to play video on iPad...');
-                const playPromise = videoRef.current!.play();
+                const playPromise = videoRef.current.play();
                 
                 if (playPromise !== undefined) {
                   await playPromise;
@@ -384,12 +340,12 @@ const App: React.FC = () => {
                 setTimeout(async () => {
                   try {
                     // 重新設置屬性
-                    videoRef.current!.muted = true;
-                    videoRef.current!.autoplay = true;
-                    videoRef.current!.playsInline = true;
-                    videoRef.current!.setAttribute('webkit-playsinline', 'true');
+                    videoRef.current.muted = true;
+                    videoRef.current.autoplay = true;
+                    videoRef.current.playsInline = true;
+                    videoRef.current.setAttribute('webkit-playsinline', 'true');
                     
-                    const retryPromise = videoRef.current!.play();
+                    const retryPromise = videoRef.current.play();
                     if (retryPromise !== undefined) {
                       await retryPromise;
                       console.log('Video playing after retry on iPad');
@@ -410,9 +366,48 @@ const App: React.FC = () => {
             };
             
             attemptPlay();
-          }
+          };
           
-          return;
+          // 等待視頻元素被掛載
+          const setupVideoElement = () => {
+            if (videoRef.current) {
+              console.log('Setting up video element...');
+              
+              // 設置視頻元素
+              videoRef.current.srcObject = streamRef.current;
+              
+              // 設置iPad特定的屬性（基於診斷工具的成功配置）
+              videoRef.current.playsInline = true;
+              videoRef.current.muted = true;
+              videoRef.current.autoplay = true;
+              videoRef.current.setAttribute('webkit-playsinline', 'true');
+              
+              // 確保視頻正確顯示
+              videoRef.current.style.backgroundColor = '#000';
+              videoRef.current.style.objectFit = 'cover';
+              videoRef.current.style.display = 'block';
+              
+              console.log('Video element setup complete');
+              setupVideoPlayback();
+              return true;
+            }
+            return false;
+          };
+          
+          // 立即嘗試設置，如果失敗則等待
+          if (!setupVideoElement()) {
+            console.log('Video element not ready, waiting...');
+            // 等待視頻元素被掛載
+            setTimeout(() => {
+              if (!setupVideoElement()) {
+                console.error('Video element still not available after delay');
+                setLoadingMessage('');
+                handleError('視頻元素未正確掛載', new Error('Video element not mounted'));
+                return;
+              }
+            }, 100);
+            return;
+          }
           
         } catch (error) {
           console.error('iPad camera initialization failed:', error);
