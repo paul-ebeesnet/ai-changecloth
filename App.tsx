@@ -291,20 +291,52 @@ const App: React.FC = () => {
           const settings = track.getSettings();
           console.log('Camera settings:', settings);
           
+          // 等待視頻元素被掛載
+          const setupVideoElement = () => {
+            if (videoRef.current) {
+              console.log('Setting up video element...');
+              
+              // 設置視頻元素
+              videoRef.current.srcObject = streamRef.current;
+              
+              // 設置iPad特定的屬性（基於診斷工具的成功配置）
+              videoRef.current.playsInline = true;
+              videoRef.current.muted = true;
+              videoRef.current.autoplay = true;
+              videoRef.current.setAttribute('webkit-playsinline', 'true');
+              
+              // 確保視頻正確顯示
+              videoRef.current.style.backgroundColor = '#000';
+              videoRef.current.style.objectFit = 'cover';
+              videoRef.current.style.display = 'block';
+              
+              console.log('Video element setup complete');
+              return true;
+            }
+            return false;
+          };
+          
+          // 立即嘗試設置，如果失敗則等待
+          if (!setupVideoElement()) {
+            console.log('Video element not ready, waiting...');
+            // 等待視頻元素被掛載
+            setTimeout(() => {
+              if (!setupVideoElement()) {
+                console.error('Video element still not available after delay');
+                setLoadingMessage('');
+                handleError('視頻元素未正確掛載', new Error('Video element not mounted'));
+                return;
+              }
+              setupVideoPlayback();
+            }, 100);
+            return;
+          }
+          
+          setupVideoPlayback();
+        }
+        
+        const setupVideoPlayback = () => {
           if (videoRef.current) {
-            // 設置視頻元素
-            videoRef.current.srcObject = streamRef.current;
-            
-            // 設置iPad特定的屬性（基於診斷工具的成功配置）
-            videoRef.current.playsInline = true;
-            videoRef.current.muted = true;
-            videoRef.current.autoplay = true;
-            videoRef.current.setAttribute('webkit-playsinline', 'true');
-            
-            // 確保視頻正確顯示
-            videoRef.current.style.backgroundColor = '#000';
-            videoRef.current.style.objectFit = 'cover';
-            
             // 監聽視頻事件（基於診斷工具的成功邏輯）
             const handleLoadedMetadata = () => {
               console.log('Video metadata loaded on iPad');
@@ -329,51 +361,55 @@ const App: React.FC = () => {
             videoRef.current.addEventListener('error', handleVideoError);
             
             // 嘗試播放視頻（基於診斷工具的成功方法）
-            try {
-              console.log('Attempting to play video on iPad...');
-              const playPromise = videoRef.current.play();
-              
-              if (playPromise !== undefined) {
-                await playPromise;
-                console.log('Video playing successfully on iPad');
-                setLoadingMessage('');
-                setAppState(AppState.CAMERA_PREVIEW);
-              } else {
-                console.log('Play command did not return promise, but video may still play');
-                setLoadingMessage('');
-                setAppState(AppState.CAMERA_PREVIEW);
-              }
-            } catch (playError) {
-              console.error('Video play failed:', playError);
-              
-              // 嘗試延遲播放（基於診斷工具的成功經驗）
-              console.log('Retrying video play after delay...');
-              setTimeout(async () => {
-                try {
-                  // 重新設置屬性
-                  videoRef.current!.muted = true;
-                  videoRef.current!.autoplay = true;
-                  videoRef.current!.playsInline = true;
-                  videoRef.current!.setAttribute('webkit-playsinline', 'true');
-                  
-                  const retryPromise = videoRef.current!.play();
-                  if (retryPromise !== undefined) {
-                    await retryPromise;
-                    console.log('Video playing after retry on iPad');
-                    setLoadingMessage('');
-                    setAppState(AppState.CAMERA_PREVIEW);
-                  } else {
-                    console.log('Retry play command did not return promise');
-                    setLoadingMessage('');
-                    setAppState(AppState.CAMERA_PREVIEW);
-                  }
-                } catch (retryError) {
-                  console.error('Retry play failed:', retryError);
+            const attemptPlay = async () => {
+              try {
+                console.log('Attempting to play video on iPad...');
+                const playPromise = videoRef.current!.play();
+                
+                if (playPromise !== undefined) {
+                  await playPromise;
+                  console.log('Video playing successfully on iPad');
                   setLoadingMessage('');
-                  handleError('iPad相機播放失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器', retryError);
+                  setAppState(AppState.CAMERA_PREVIEW);
+                } else {
+                  console.log('Play command did not return promise, but video may still play');
+                  setLoadingMessage('');
+                  setAppState(AppState.CAMERA_PREVIEW);
                 }
-              }, 1000);
-            }
+              } catch (playError) {
+                console.error('Video play failed:', playError);
+                
+                // 嘗試延遲播放（基於診斷工具的成功經驗）
+                console.log('Retrying video play after delay...');
+                setTimeout(async () => {
+                  try {
+                    // 重新設置屬性
+                    videoRef.current!.muted = true;
+                    videoRef.current!.autoplay = true;
+                    videoRef.current!.playsInline = true;
+                    videoRef.current!.setAttribute('webkit-playsinline', 'true');
+                    
+                    const retryPromise = videoRef.current!.play();
+                    if (retryPromise !== undefined) {
+                      await retryPromise;
+                      console.log('Video playing after retry on iPad');
+                      setLoadingMessage('');
+                      setAppState(AppState.CAMERA_PREVIEW);
+                    } else {
+                      console.log('Retry play command did not return promise');
+                      setLoadingMessage('');
+                      setAppState(AppState.CAMERA_PREVIEW);
+                    }
+                  } catch (retryError) {
+                    console.error('Retry play failed:', retryError);
+                    setLoadingMessage('');
+                    handleError('iPad相機播放失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器', retryError);
+                  }
+                }, 1000);
+              }
+            };
+            
+            attemptPlay();
           }
           
           return;
@@ -1006,6 +1042,9 @@ const App: React.FC = () => {
             <div>getUserMedia: {navigator.mediaDevices?.getUserMedia ? '✅' : '❌'}</div>
             <div>相機流: {streamRef.current ? '✅' : '❌'}</div>
             <div>視頻元素: {videoRef.current ? '✅' : '❌'}</div>
+            <div>視頻srcObject: {videoRef.current?.srcObject ? '✅' : '❌'}</div>
+            <div>視頻尺寸: {videoRef.current?.videoWidth ? `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : '無'}</div>
+            <div>視頻狀態: {videoRef.current?.paused === false ? '播放中' : videoRef.current?.paused === true ? '暫停' : '未知'}</div>
             <div>當前狀態: {AppState[appState]}</div>
             <div className="mt-2">
               <button 
