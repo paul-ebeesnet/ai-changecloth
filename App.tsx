@@ -22,6 +22,26 @@ const App: React.FC = () => {
   
   // 檢查是否啟用調試模式
   const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+  
+  // 確保視頻元素在組件掛載後被正確設置
+  useEffect(() => {
+    if (appState === AppState.CAMERA_PREVIEW && streamRef.current && videoRef.current) {
+      console.log('Ensuring video element is properly set up...');
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.playsInline = true;
+      videoRef.current.muted = true;
+      videoRef.current.autoplay = true;
+      videoRef.current.setAttribute('webkit-playsinline', 'true');
+      videoRef.current.style.backgroundColor = '#000';
+      videoRef.current.style.objectFit = 'cover';
+      videoRef.current.style.display = 'block';
+      
+      // 嘗試播放
+      videoRef.current.play().catch((error) => {
+        console.log('Auto-play failed, this is normal:', error);
+      });
+    }
+  }, [appState]);
 
   // Add effect to log uploadResult changes
   useEffect(() => {
@@ -397,15 +417,23 @@ const App: React.FC = () => {
           // 立即嘗試設置，如果失敗則等待
           if (!setupVideoElement()) {
             console.log('Video element not ready, waiting...');
-            // 等待視頻元素被掛載
-            setTimeout(() => {
-              if (!setupVideoElement()) {
-                console.error('Video element still not available after delay');
-                setLoadingMessage('');
-                handleError('視頻元素未正確掛載', new Error('Video element not mounted'));
-                return;
-              }
-            }, 100);
+            // 使用多個延遲重試
+            const retrySetup = (attempt: number) => {
+              setTimeout(() => {
+                console.log(`Video element setup attempt ${attempt}...`);
+                if (!setupVideoElement()) {
+                  if (attempt < 10) {
+                    retrySetup(attempt + 1);
+                  } else {
+                    console.error('Video element still not available after all attempts');
+                    setLoadingMessage('');
+                    handleError('視頻元素未正確掛載', new Error('Video element not mounted'));
+                    return;
+                  }
+                }
+              }, 100 * attempt); // 遞增延遲
+            };
+            retrySetup(1);
             return;
           }
           
@@ -1041,7 +1069,7 @@ const App: React.FC = () => {
             <div>視頻尺寸: {videoRef.current?.videoWidth ? `${videoRef.current.videoWidth}x${videoRef.current.videoHeight}` : '無'}</div>
             <div>視頻狀態: {videoRef.current?.paused === false ? '播放中' : videoRef.current?.paused === true ? '暫停' : '未知'}</div>
             <div>當前狀態: {AppState[appState]}</div>
-            <div className="mt-2">
+            <div className="mt-2 space-y-1">
               <button 
                 onClick={() => console.log('調試信息:', {
                   deviceInfo: {
@@ -1058,9 +1086,31 @@ const App: React.FC = () => {
                   appState: AppState[appState],
                   errors: error
                 })}
-                className="bg-blue-600 text-white px-2 py-1 rounded text-xs"
+                className="bg-blue-600 text-white px-2 py-1 rounded text-xs w-full"
               >
                 輸出調試信息
+              </button>
+              <button 
+                onClick={() => {
+                  if (videoRef.current && streamRef.current) {
+                    console.log('強制設置視頻元素...');
+                    videoRef.current.srcObject = streamRef.current;
+                    videoRef.current.playsInline = true;
+                    videoRef.current.muted = true;
+                    videoRef.current.autoplay = true;
+                    videoRef.current.setAttribute('webkit-playsinline', 'true');
+                    videoRef.current.style.backgroundColor = '#000';
+                    videoRef.current.style.objectFit = 'cover';
+                    videoRef.current.style.display = 'block';
+                    videoRef.current.play().catch(e => console.log('Play error:', e));
+                    console.log('視頻元素已強制設置');
+                  } else {
+                    console.log('視頻元素或相機流不可用');
+                  }
+                }}
+                className="bg-green-600 text-white px-2 py-1 rounded text-xs w-full"
+              >
+                強制設置視頻
               </button>
             </div>
           </div>
