@@ -343,12 +343,13 @@
             warnings: 0
         };
         
-        // 重寫console方法
+        // 保存原始console方法
         const originalConsole = {
             log: console.log,
             warn: console.warn,
             error: console.error,
-            info: console.info
+            info: console.info,
+            debug: console.debug
         };
         
         function addLog(level, message, data = null) {
@@ -372,7 +373,12 @@
             renderLog(logEntry);
             
             // 保持原始console功能
-            originalConsole[level](`[${timestamp}] ${message}`, data);
+            if (originalConsole[level] && typeof originalConsole[level] === 'function') {
+                originalConsole[level](`[${timestamp}] ${message}`, data);
+            } else {
+                // 如果原始方法不存在，使用console.log作為後備
+                originalConsole.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`, data);
+            }
         }
         
         function renderLog(logEntry) {
@@ -403,10 +409,11 @@
         }
         
         // 重寫console方法
-        console.log = (message, data) => addLog('info', message, data);
-        console.warn = (message, data) => addLog('warn', message, data);
-        console.error = (message, data) => addLog('error', message, data);
-        console.info = (message, data) => addLog('info', message, data);
+        console.log = function(message, data) { addLog('info', message, data); };
+        console.warn = function(message, data) { addLog('warn', message, data); };
+        console.error = function(message, data) { addLog('error', message, data); };
+        console.info = function(message, data) { addLog('info', message, data); };
+        console.debug = function(message, data) { addLog('debug', message, data); };
         
         // 捕獲未處理的錯誤
         window.addEventListener('error', (event) => {
