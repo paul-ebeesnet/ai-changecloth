@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPad相機修復工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .step {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .step h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        
+        .critical {
+            border-left-color: #f44336;
+        }
+        
+        .critical h3 {
+            color: #f44336;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.2);
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .danger {
+            background: linear-gradient(45deg, #f44336, #da190b);
+        }
+        
+        video {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 10px;
+            margin: 15px 0;
+            background: #000;
+            border: 2px solid #333;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 2px solid #f44336;
+            color: #f44336;
+        }
+        
+        .warning {
+            background: rgba(255, 152, 0, 0.2);
+            border: 2px solid #ff9800;
+            color: #ff9800;
+        }
+        
+        .info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 2px solid #2196F3;
+            color: #2196F3;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            color: #FFC107;
+            margin-top: 0;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        
+        .code-block {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            border: 1px solid #444;
+            white-space: pre-wrap;
+        }
+        
+        .highlight {
+            background: rgba(255, 235, 59, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 iPad相機修復工具</h1>
+        
+        <div class="instructions">
+            <h3>📋 修復步驟</h3>
+            <ol>
+                <li><strong>檢查環境</strong> - 確保在HTTPS環境下運行</li>
+                <li><strong>權限檢查</strong> - 確認相機權限已授予</li>
+                <li><strong>設備檢測</strong> - 檢查iPad相機設備</li>
+                <li><strong>流測試</strong> - 測試相機流獲取</li>
+                <li><strong>播放修復</strong> - 修復視頻播放問題</li>
+                <li><strong>最終測試</strong> - 驗證相機功能正常</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>🔍 步驟 1: 環境檢查</h3>
+            <button onclick="checkEnvironment()">檢查運行環境</button>
+            <div id="environmentStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🔐 步驟 2: 權限檢查</h3>
+            <button onclick="checkPermissions()">檢查相機權限</button>
+            <div id="permissionStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>📷 步驟 3: 設備檢測</h3>
+            <button onclick="checkDevices()">檢測相機設備</button>
+            <div id="deviceStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🎥 步驟 4: 流測試</h3>
+            <button onclick="testStream()">測試相機流</button>
+            <div id="streamStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>🔧 步驟 5: 播放修復</h3>
+            <button onclick="fixPlayback()">修復視頻播放</button>
+            <div id="playbackStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>✅ 步驟 6: 最終測試</h3>
+            <button onclick="finalTest()">最終測試</button>
+            <button onclick="stopAll()" class="danger">停止所有</button>
+            <div id="finalStatus"></div>
+        </div>
+        
+        <div class="step">
+            <h3>📊 診斷日誌</h3>
+            <button onclick="clearLog()">清除日誌</button>
+            <div id="log" class="code-block"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentStream = null;
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute('webkit-playsinline', 'true');
+        video.style.width = '100%';
+        video.style.maxWidth = '400px';
+        video.style.borderRadius = '10px';
+        video.style.margin = '15px 0';
+        video.style.background = '#000';
+        video.style.border = '2px solid #333';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            const logElement = document.getElementById('log');
+            logElement.textContent += logEntry + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        function showStatus(elementId, message, type, details = null) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            if (details) {
+                element.innerHTML += `<div class="code-block">${details}</div>`;
+            }
+        }
+        
+        async function checkEnvironment() {
+            log('檢查運行環境...');
+            
+            const protocol = location.protocol;
+            const hostname = location.hostname;
+            const isHTTPS = protocol === 'https:';
+            const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+            
+            if (isHTTPS || isLocalhost) {
+                showStatus('environmentStatus', '✅ 環境檢查通過', 'success', 
+                    `協議: ${protocol}\n主機: ${hostname}\n安全: ${isHTTPS ? 'HTTPS' : '本地開發'}`);
+                log('環境檢查通過');
+            } else {
+                showStatus('environmentStatus', '❌ 需要HTTPS環境', 'error', 
+                    `當前協議: ${protocol}\n相機功能需要HTTPS環境才能正常工作`);
+                log('環境檢查失敗 - 需要HTTPS', 'error');
+            }
+        }
+        
+        async function checkPermissions() {
+            log('檢查相機權限...');
+            
+            try {
+                if (!navigator.permissions) {
+                    showStatus('permissionStatus', '⚠️ 瀏覽器不支援權限API', 'warning', 
+                        '將嘗試直接請求相機權限');
+                    log('瀏覽器不支援權限API', 'warning');
+                    return;
+                }
+                
+                const permissionStatus = await navigator.permissions.query({name: 'camera'});
+                
+                if (permissionStatus.state === 'granted') {
+                    showStatus('permissionStatus', '✅ 相機權限已授予', 'success', 
+                        `權限狀態: ${permissionStatus.state}`);
+                    log('相機權限已授予');
+                } else if (permissionStatus.state === 'prompt') {
+                    showStatus('permissionStatus', '⚠️ 需要請求相機權限', 'warning', 
+                        `權限狀態: ${permissionStatus.state}\n將在下一步自動請求`);
+                    log('需要請求相機權限', 'warning');
+                } else {
+                    showStatus('permissionStatus', '❌ 相機權限被拒絕', 'error', 
+                        `權限狀態: ${permissionStatus.state}\n請在瀏覽器設定中允許相機權限`);
+                    log('相機權限被拒絕', 'error');
+                }
+                
+            } catch (error) {
+                showStatus('permissionStatus', '⚠️ 權限檢查失敗', 'warning', 
+                    `錯誤: ${error.message}\n將嘗試直接請求相機權限`);
+                log(`權限檢查失敗: ${error.message}`, 'warning');
+            }
+        }
+        
+        async function checkDevices() {
+            log('檢測相機設備...');
+            
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    throw new Error('瀏覽器不支援enumerateDevices API');
+                }
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                if (videoDevices.length === 0) {
+                    showStatus('deviceStatus', '❌ 未找到相機設備', 'error', 
+                        '請確認iPad有相機功能且未被其他應用程式佔用');
+                    log('未找到相機設備', 'error');
+                } else {
+                    const deviceList = videoDevices.map(device => 
+                        `設備: ${device.label || '未知設備'}\nID: ${device.deviceId}`
+                    ).join('\n\n');
+                    
+                    showStatus('deviceStatus', `✅ 找到 ${videoDevices.length} 個相機設備`, 'success', 
+                        deviceList);
+                    log(`找到 ${videoDevices.length} 個相機設備`);
+                }
+                
+            } catch (error) {
+                showStatus('deviceStatus', '❌ 設備檢測失敗', 'error', 
+                    `錯誤: ${error.message}`);
+                log(`設備檢測失敗: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testStream() {
+            log('測試相機流...');
+            
+            try {
+                // 停止現有流
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                    currentStream = null;
+                }
+                
+                // 嘗試獲取相機流
+                const constraints = {
+                    video: {
+                        facingMode: 'user'
+                    }
+                };
+                
+                log(`請求相機流: ${JSON.stringify(constraints)}`);
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                const videoTracks = currentStream.getVideoTracks();
+                if (videoTracks.length === 0) {
+                    throw new Error('相機流中沒有視頻軌道');
+                }
+                
+                const track = videoTracks[0];
+                const settings = track.getSettings();
+                
+                showStatus('streamStatus', '✅ 相機流獲取成功', 'success', 
+                    `軌道數: ${videoTracks.length}\n解析度: ${settings.width}x${settings.height}\n設備ID: ${track.label || '未知'}`);
+                log(`相機流獲取成功 - 解析度: ${settings.width}x${settings.height}`);
+                
+            } catch (error) {
+                showStatus('streamStatus', '❌ 相機流獲取失敗', 'error', 
+                    `錯誤: ${error.message}\n可能原因:\n1. 相機權限被拒絕\n2. 相機被其他應用程式佔用\n3. 相機設備故障`);
+                log(`相機流獲取失敗: ${error.message}`, 'error');
+            }
+        }
+        
+        async function fixPlayback() {
+            log('修復視頻播放...');
+            
+            try {
+                if (!currentStream) {
+                    throw new Error('沒有可用的相機流');
+                }
+                
+                // 設置視頻元素
+                video.srcObject = currentStream;
+                
+                // 添加視頻元素到頁面
+                const playbackStatus = document.getElementById('playbackStatus');
+                playbackStatus.appendChild(video);
+                
+                // 設置iPad特定的屬性
+                video.playsInline = true;
+                video.muted = true;
+                video.autoplay = true;
+                video.setAttribute('webkit-playsinline', 'true');
+                
+                // 監聽視頻事件
+                const playPromise = video.play();
+                
+                if (playPromise !== undefined) {
+                    await playPromise;
+                    showStatus('playbackStatus', '✅ 視頻播放修復成功', 'success', 
+                        '相機畫面應該正常顯示');
+                    log('視頻播放修復成功');
+                } else {
+                    showStatus('playbackStatus', '⚠️ 播放命令未返回Promise', 'warning', 
+                        '但視頻可能仍然正常播放');
+                    log('播放命令未返回Promise', 'warning');
+                }
+                
+                // 監聽播放事件
+                video.addEventListener('play', () => {
+                    log('視頻開始播放');
+                });
+                
+                video.addEventListener('error', (e) => {
+                    log(`視頻播放錯誤: ${e.message}`, 'error');
+                });
+                
+                video.addEventListener('loadedmetadata', () => {
+                    log(`視頻元數據加載 - 尺寸: ${video.videoWidth}x${video.videoHeight}`);
+                });
+                
+            } catch (error) {
+                showStatus('playbackStatus', '❌ 視頻播放修復失敗', 'error', 
+                    `錯誤: ${error.message}\n請嘗試:\n1. 重新啟動瀏覽器\n2. 切換到Safari瀏覽器\n3. 檢查iPad相機權限`);
+                log(`視頻播放修復失敗: ${error.message}`, 'error');
+            }
+        }
+        
+        async function finalTest() {
+            log('進行最終測試...');
+            
+            try {
+                if (!currentStream || !video.srcObject) {
+                    throw new Error('相機流或視頻元素未準備就緒');
+                }
+                
+                // 檢查視頻是否正在播放
+                const isPlaying = !video.paused && !video.ended && video.readyState > 2;
+                
+                if (isPlaying) {
+                    showStatus('finalStatus', '🎉 iPad相機修復成功！', 'success', 
+                        `相機正常工作\n視頻尺寸: ${video.videoWidth}x${video.videoHeight}\n播放狀態: 正常`);
+                    log('iPad相機修復成功！');
+                } else {
+                    showStatus('finalStatus', '⚠️ 相機可能仍有問題', 'warning', 
+                        `播放狀態: ${video.paused ? '暫停' : '未開始'}\n準備狀態: ${video.readyState}\n請檢查相機畫面是否顯示`);
+                    log('相機可能仍有問題', 'warning');
+                }
+                
+            } catch (error) {
+                showStatus('finalStatus', '❌ 最終測試失敗', 'error', 
+                    `錯誤: ${error.message}\n請重新執行修復步驟`);
+                log(`最終測試失敗: ${error.message}`, 'error');
+            }
+        }
+        
+        function stopAll() {
+            log('停止所有相機流...');
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            
+            if (video.srcObject) {
+                video.srcObject = null;
+            }
+            
+            // 移除視頻元素
+            if (video.parentNode) {
+                video.parentNode.removeChild(video);
+            }
+            
+            log('所有相機流已停止');
+        }
+        
+        // 頁面加載時自動開始檢查
+        window.addEventListener('load', () => {
+            log('iPad相機修復工具已加載');
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>
