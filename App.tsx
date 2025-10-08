@@ -345,8 +345,34 @@ const App: React.FC = () => {
               }
             } catch (playError) {
               console.error('Video play failed:', playError);
-              setLoadingMessage('');
-              handleError('iPad相機播放失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器', playError);
+              
+              // 嘗試延遲播放（基於診斷工具的成功經驗）
+              console.log('Retrying video play after delay...');
+              setTimeout(async () => {
+                try {
+                  // 重新設置屬性
+                  videoRef.current!.muted = true;
+                  videoRef.current!.autoplay = true;
+                  videoRef.current!.playsInline = true;
+                  videoRef.current!.setAttribute('webkit-playsinline', 'true');
+                  
+                  const retryPromise = videoRef.current!.play();
+                  if (retryPromise !== undefined) {
+                    await retryPromise;
+                    console.log('Video playing after retry on iPad');
+                    setLoadingMessage('');
+                    setAppState(AppState.CAMERA_PREVIEW);
+                  } else {
+                    console.log('Retry play command did not return promise');
+                    setLoadingMessage('');
+                    setAppState(AppState.CAMERA_PREVIEW);
+                  }
+                } catch (retryError) {
+                  console.error('Retry play failed:', retryError);
+                  setLoadingMessage('');
+                  handleError('iPad相機播放失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器', retryError);
+                }
+              }, 1000);
             }
           }
           
@@ -881,7 +907,8 @@ const App: React.FC = () => {
                className="rounded-lg w-full h-auto shadow-lg"
                style={{ 
                  backgroundColor: '#000',
-                 objectFit: 'cover'
+                 objectFit: 'cover',
+                 display: 'block'
                }}
              ></video>
              <button onClick={capturePhoto} className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-xl">拍照</button>
