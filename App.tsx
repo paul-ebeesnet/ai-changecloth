@@ -1028,9 +1028,35 @@ const App: React.FC = () => {
                      </div>
                    </div>
                  ) : (
-                   <div className="flex flex-col items-center gap-4 mt-4">
-                     <p className="text-lg">正在上傳圖片並生成 QR Code...</p>
-                     {loadingMessage && <p className="text-md">{loadingMessage}</p>}
+                   <div className="flex flex-col items-center gap-6 mt-4">
+                     {/* AI生成中動態效果 */}
+                     <div className="flex flex-col items-center gap-4">
+                       <div className="relative">
+                         <div className="w-32 h-32 border-4 border-gray-600 rounded-full animate-spin border-t-blue-500"></div>
+                         <div className="absolute inset-0 flex items-center justify-center">
+                           <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse flex items-center justify-center">
+                             <span className="text-white font-bold text-sm">AI</span>
+                           </div>
+                         </div>
+                       </div>
+                       <div className="text-center">
+                         <p className="text-xl font-bold text-green-400 animate-pulse">AI生成中...</p>
+                         <p className="text-md text-gray-300 mt-2">正在處理您的古裝藝術照</p>
+                         {loadingMessage && <p className="text-sm text-gray-400 mt-1">{loadingMessage}</p>}
+                       </div>
+                     </div>
+                     
+                     {/* 顯示原圖作為預覽 */}
+                     {finalImage && (
+                       <div className="flex flex-col items-center">
+                         <p className="text-sm text-gray-400 mb-2">預覽效果</p>
+                         <img 
+                           src={finalImage} 
+                           alt="預覽效果" 
+                           className="rounded-lg shadow-lg max-w-full md:max-w-md max-h-[40vh] object-contain opacity-50"
+                         />
+                       </div>
+                     )}
                    </div>
                  )}
             </div>
@@ -1129,27 +1155,31 @@ const ThumbnailDisplay: React.FC<{
   thumbnailUrl?: string | null; 
   fallbackImageUrl?: string | null 
 }> = ({ thumbnailUrl, fallbackImageUrl }) => {
-  const [useThumbnail, setUseThumbnail] = useState<boolean>(true);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [imageError, setImageError] = useState<boolean>(false);
   const imageRef = useRef<HTMLImageElement>(null);
   
   // Reset state when URL changes
   useEffect(() => {
-    setUseThumbnail(true);
     setImageLoaded(false);
     setImageError(false);
   }, [thumbnailUrl]);
   
-  if (!fallbackImageUrl) {
-    return null;
+  // 直接使用縮圖，如果沒有縮圖則使用原圖
+  const imageUrl = thumbnailUrl || fallbackImageUrl;
+  const isThumbnail = !!thumbnailUrl;
+  
+  if (!imageUrl) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-64 h-64 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
+          <p className="text-gray-400">圖片載入中...</p>
+        </div>
+      </div>
+    );
   }
   
-  const imageUrl = useThumbnail && thumbnailUrl ? thumbnailUrl : fallbackImageUrl;
-  const isThumbnail = useThumbnail && !!thumbnailUrl;
-  
   console.log('ThumbnailDisplay rendering:', { 
-    useThumbnail, 
     thumbnailUrl, 
     fallbackImageUrl,
     imageUrl,
@@ -1179,11 +1209,6 @@ const ThumbnailDisplay: React.FC<{
             naturalHeight: imgElement.naturalHeight,
             complete: imgElement.complete
           });
-          
-          if (isThumbnail && thumbnailUrl) {
-            console.log('Switching to fallback image');
-            setUseThumbnail(false);
-          }
           
           setImageError(true);
           setImageLoaded(false);
