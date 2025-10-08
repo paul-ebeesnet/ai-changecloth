@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPad相機測試頁面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .device-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .device-info h3 {
+            margin-top: 0;
+            color: #ffd700;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .danger {
+            background: #f44336;
+        }
+        
+        .danger:hover {
+            background: #da190b;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border-radius: 10px;
+            margin: 20px 0;
+            background: #000;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        
+        .warning {
+            background: rgba(255, 193, 7, 0.3);
+            border: 1px solid #ffc107;
+        }
+        
+        .info {
+            background: rgba(33, 150, 243, 0.3);
+            border: 1px solid #2196F3;
+        }
+        
+        .log {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .instructions h3 {
+            color: #FFC107;
+            margin-top: 0;
+        }
+        
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 iPad相機測試工具</h1>
+        
+        <div class="instructions">
+            <h3>🔧 測試步驟</h3>
+            <ol>
+                <li>確保您在iPad上使用Safari或Chrome瀏覽器</li>
+                <li>點擊「檢測設備信息」查看當前設備狀態</li>
+                <li>點擊「測試相機權限」檢查相機是否可用</li>
+                <li>點擊「開啟相機」測試相機畫面顯示</li>
+                <li>如果畫面是黑色，請按照錯誤提示進行修復</li>
+            </ol>
+        </div>
+        
+        <div class="device-info">
+            <h3>📋 設備信息</h3>
+            <div id="deviceInfo">點擊「檢測設備信息」按鈕...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 相機支持檢測</h3>
+            <button onclick="detectDeviceInfo()">檢測設備信息</button>
+            <button onclick="testCameraSupport()">測試相機權限</button>
+            <div id="cameraSupport" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📷 相機畫面測試</h3>
+            <button onclick="startCamera()" id="startBtn">開啟相機</button>
+            <button onclick="stopCamera()" id="stopBtn" disabled>關閉相機</button>
+            <button onclick="capturePhoto()" id="captureBtn" disabled>拍照測試</button>
+            
+            <video id="video" autoplay playsinline muted webkit-playsinline="true" style="display: none;"></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            
+            <div id="cameraStatus" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 測試日誌</h3>
+            <button onclick="clearLog()">清除日誌</button>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentStream = null;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const log = document.getElementById('log');
+        
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            log.textContent += logEntry;
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            log.textContent = '';
+        }
+        
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.style.display = 'block';
+        }
+        
+        function detectDeviceInfo() {
+            const userAgent = navigator.userAgent;
+            const isiPad = /iPad/i.test(userAgent);
+            const isiPhone = /iPhone/i.test(userAgent);
+            const isiOS = /iPhone|iPad|iPod/i.test(userAgent);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+            const isChrome = /Chrome/i.test(userAgent);
+            
+            const deviceInfo = `
+                <strong>設備類型:</strong> ${isiPad ? 'iPad' : isiPhone ? 'iPhone' : '其他'}<br>
+                <strong>作業系統:</strong> ${isiOS ? 'iOS' : '其他'}<br>
+                <strong>瀏覽器:</strong> ${isSafari ? 'Safari' : isChrome ? 'Chrome' : '其他'}<br>
+                <strong>User Agent:</strong> ${userAgent}<br>
+                <strong>支援getUserMedia:</strong> ${navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? '是' : '否'}<br>
+                <strong>支援WebRTC:</strong> ${navigator.mediaDevices ? '是' : '否'}
+            `;
+            
+            document.getElementById('deviceInfo').innerHTML = deviceInfo;
+            logMessage('設備信息檢測完成');
+            
+            if (isiPad) {
+                if (isSafari) {
+                    showStatus('cameraSupport', '✅ iPad Safari - 應支援相機功能', 'success');
+                } else if (isChrome) {
+                    showStatus('cameraSupport', '⚠️ iPad Chrome - 相機支援可能有限', 'warning');
+                } else {
+                    showStatus('cameraSupport', '❓ iPad其他瀏覽器 - 相機支援未知', 'warning');
+                }
+            } else {
+                showStatus('cameraSupport', 'ℹ️ 非iPad設備', 'info');
+            }
+        }
+        
+        async function testCameraSupport() {
+            logMessage('開始測試相機支援...');
+            
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('瀏覽器不支援getUserMedia API');
+                }
+                
+                // 檢查可用的媒體設備
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                logMessage(`找到 ${videoDevices.length} 個視頻設備`);
+                
+                if (videoDevices.length === 0) {
+                    throw new Error('未找到相機設備');
+                }
+                
+                // 測試基本的相機權限請求
+                const constraints = { video: { facingMode: 'user' } };
+                logMessage('請求相機權限...');
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                logMessage('相機權限獲取成功');
+                
+                // 檢查流中的視頻軌道
+                const videoTracks = stream.getVideoTracks();
+                logMessage(`找到 ${videoTracks.length} 個視頻軌道`);
+                
+                if (videoTracks.length > 0) {
+                    const track = videoTracks[0];
+                    const settings = track.getSettings();
+                    logMessage(`相機設定: ${JSON.stringify(settings)}`);
+                }
+                
+                // 清理測試流
+                stream.getTracks().forEach(track => track.stop());
+                
+                showStatus('cameraSupport', '✅ 相機權限測試通過', 'success');
+                logMessage('相機權限測試完成');
+                
+            } catch (error) {
+                logMessage(`相機權限測試失敗: ${error.message}`, 'error');
+                showStatus('cameraSupport', `❌ 相機權限測試失敗: ${error.message}`, 'error');
+            }
+        }
+        
+        async function startCamera() {
+            logMessage('開始啟動相機...');
+            
+            try {
+                const isiPad = /iPad/i.test(navigator.userAgent);
+                const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                
+                if (isiOS) {
+                    logMessage('檢測到iOS設備，使用優化配置...');
+                }
+                
+                // 為iPad使用簡化的約束條件
+                const constraints = {
+                    video: {
+                        facingMode: 'user'
+                    }
+                };
+                
+                logMessage(`請求相機流，約束條件: ${JSON.stringify(constraints)}`);
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                logMessage('相機流獲取成功');
+                
+                // 設置視頻元素
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                
+                // 為iOS設備設置特殊屬性
+                if (isiOS) {
+                    video.playsInline = true;
+                    video.muted = true;
+                    video.autoplay = true;
+                    video.setAttribute('webkit-playsinline', 'true');
+                    logMessage('設置iOS特殊屬性');
+                }
+                
+                // 監聽視頻事件
+                video.addEventListener('loadedmetadata', () => {
+                    logMessage('視頻元數據加載完成');
+                    logMessage(`視頻尺寸: ${video.videoWidth}x${video.videoHeight}`);
+                });
+                
+                video.addEventListener('play', () => {
+                    logMessage('視頻開始播放');
+                    showStatus('cameraStatus', '✅ 相機畫面顯示成功', 'success');
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('captureBtn').disabled = false;
+                });
+                
+                video.addEventListener('error', (e) => {
+                    logMessage(`視頻播放錯誤: ${e.message}`, 'error');
+                    showStatus('cameraStatus', `❌ 視頻播放錯誤: ${e.message}`, 'error');
+                });
+                
+                // 嘗試播放視頻
+                try {
+                    await video.play();
+                    logMessage('視頻播放命令執行成功');
+                } catch (playError) {
+                    logMessage(`視頻播放失敗: ${playError.message}`, 'error');
+                    
+                    // 對於iPad，提供詳細的錯誤信息
+                    if (isiPad) {
+                        showStatus('cameraStatus', '❌ iPad相機畫面顯示失敗。請嘗試：\n1. 確保已授予相機權限\n2. 關閉其他相機應用程式\n3. 重新啟動瀏覽器\n4. 切換到Safari瀏覽器', 'error');
+                    } else {
+                        showStatus('cameraStatus', `❌ 相機畫面顯示失敗: ${playError.message}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                logMessage(`啟動相機失敗: ${error.message}`, 'error');
+                
+                let errorMessage = '啟動相機失敗';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = '相機權限被拒絕。請在瀏覽器設定中允許相機權限。';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = '未找到相機設備。';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = '相機正在被其他應用程式使用。';
+                } else {
+                    errorMessage = `${errorMessage}: ${error.message}`;
+                }
+                
+                showStatus('cameraStatus', `❌ ${errorMessage}`, 'error');
+            }
+        }
+        
+        function stopCamera() {
+            logMessage('關閉相機...');
+            
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                    logMessage('停止視頻軌道');
+                });
+                currentStream = null;
+            }
+            
+            video.style.display = 'none';
+            video.srcObject = null;
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('captureBtn').disabled = true;
+            
+            showStatus('cameraStatus', '相機已關閉', 'info');
+            logMessage('相機關閉完成');
+        }
+        
+        function capturePhoto() {
+            if (!video.videoWidth || !video.videoHeight) {
+                logMessage('視頻尺寸無效，無法拍照', 'error');
+                showStatus('cameraStatus', '❌ 視頻尺寸無效，無法拍照', 'error');
+                return;
+            }
+            
+            logMessage('開始拍照...');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/png');
+            
+            // 創建下載連結
+            const link = document.createElement('a');
+            link.download = `ipad-camera-test-${Date.now()}.png`;
+            link.href = dataUrl;
+            link.click();
+            
+            logMessage(`拍照成功，圖片尺寸: ${canvas.width}x${canvas.height}`);
+            showStatus('cameraStatus', '✅ 拍照成功，圖片已下載', 'success');
+        }
+        
+        // 頁面加載時自動檢測設備信息
+        window.addEventListener('load', () => {
+            logMessage('iPad相機測試頁面已加載');
+            detectDeviceInfo();
+        });
+    </script>
+</body>
+</html>
