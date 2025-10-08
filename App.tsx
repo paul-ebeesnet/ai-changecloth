@@ -20,6 +20,11 @@ const App: React.FC = () => {
   const [finalImage, setFinalImage] = useState<string | null>(null);
   const [uploadResult, setUploadResult] = useState<{ imageUrl: string; qrCodeUrl: string; thumbnailUrl?: string } | null>(null);
   
+  // 倒數計時器相關狀態
+  const [countdown, setCountdown] = useState<number>(0);
+  const [isCountingDown, setIsCountingDown] = useState<boolean>(false);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+  
   // 檢查是否啟用調試模式
   const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
   
@@ -43,6 +48,52 @@ const App: React.FC = () => {
     }
   }, [appState]);
 
+  // 倒數計時器邏輯
+  const startCountdown = () => {
+    if (isCountingDown) return;
+    
+    setIsCountingDown(true);
+    setCountdown(5);
+    
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          // 倒數結束，執行拍照
+          clearInterval(countdownRef.current!);
+          setIsCountingDown(false);
+          setCountdown(0);
+          
+          // 延遲一點時間執行拍照，讓用戶看到倒數結束
+          setTimeout(() => {
+            capturePhoto();
+          }, 200);
+          
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+  
+  // 取消倒數計時器
+  const cancelCountdown = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setIsCountingDown(false);
+    setCountdown(0);
+  };
+  
+  // 清理倒數計時器
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+      }
+    };
+  }, []);
+  
   // Add effect to log uploadResult changes
   useEffect(() => {
     console.log('uploadResult state changed:', uploadResult);
@@ -957,20 +1008,63 @@ const App: React.FC = () => {
         return (
            <div className="flex flex-col items-center gap-4 w-full max-w-2xl mx-auto">
              <BackButton />
-             <video 
-               ref={videoRef} 
-               autoPlay 
-               playsInline 
-               muted
-               webkit-playsinline="true"
-               className="rounded-lg w-full h-auto shadow-lg"
-               style={{ 
-                 backgroundColor: '#000',
-                 objectFit: 'cover',
-                 display: 'block'
-               }}
-             ></video>
-             <button onClick={capturePhoto} className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-xl">拍照</button>
+             
+             {/* 視頻容器 - 包含倒數計時器覆蓋層 */}
+             <div className="relative">
+               <video 
+                 ref={videoRef} 
+                 autoPlay 
+                 playsInline 
+                 muted
+                 webkit-playsinline="true"
+                 className="rounded-lg w-full h-auto shadow-lg"
+                 style={{ 
+                   backgroundColor: '#000',
+                   objectFit: 'cover',
+                   display: 'block'
+                 }}
+               ></video>
+               
+               {/* 倒數計時器覆蓋層 */}
+               {isCountingDown && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                   <div className="text-center">
+                     <div className="text-8xl font-bold text-white animate-pulse mb-4">
+                       {countdown}
+                     </div>
+                     <div className="text-2xl text-white font-semibold">
+                       準備拍照...
+                     </div>
+                   </div>
+                 </div>
+               )}
+             </div>
+             
+             {/* 按鈕區域 */}
+             <div className="flex flex-col items-center gap-3">
+               {!isCountingDown ? (
+                 <button 
+                   onClick={startCountdown} 
+                   className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-xl transition-transform transform hover:scale-105"
+                 >
+                   開始拍照 (5秒倒數)
+                 </button>
+               ) : (
+                 <button 
+                   onClick={cancelCountdown} 
+                   className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-xl transition-transform transform hover:scale-105"
+                 >
+                   取消拍照
+                 </button>
+               )}
+               
+               <p className="text-sm text-gray-400 text-center max-w-md">
+                 {isCountingDown 
+                   ? "倒數計時中，請保持姿勢..." 
+                   : "點擊按鈕開始5秒倒數計時，準備好您的姿勢！"
+                 }
+               </p>
+             </div>
            </div>
         );
       case AppState.PHOTO_CONFIRMATION:
