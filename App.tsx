@@ -260,122 +260,114 @@ const App: React.FC = () => {
       
       console.log('Device info:', { isiPad, isiOS, isSafari });
       
-      // 对于iPad，使用专门的诊断功能
+      // 对于iPad，使用简化的成功逻辑（基于诊断工具的成功经验）
       if (isiPad) {
-        console.log('iPad detected, using specialized camera initialization...');
+        console.log('iPad detected, using simplified camera initialization...');
         setLoadingMessage('正在初始化iPad相機...');
         
         try {
-          // 使用专门的iPad相机诊断功能
-          await diagnoseAndFixiPadCamera();
-          
-          // 如果诊断成功，获取实际的相机流
+          // 直接使用成功的配置（基于诊断工具的成功经验）
           const constraints = {
             video: {
               facingMode: 'user'
             }
           };
           
-          console.log('Getting actual camera stream for iPad...');
+          console.log('Requesting camera stream for iPad...');
           streamRef.current = await navigator.mediaDevices.getUserMedia(constraints);
           
+          console.log('Camera stream acquired:', streamRef.current);
+          const videoTracks = streamRef.current.getVideoTracks();
+          console.log('Stream tracks:', videoTracks);
+          
+          if (videoTracks.length === 0) {
+            throw new Error('相機流中沒有視頻軌道');
+          }
+          
+          const track = videoTracks[0];
+          const settings = track.getSettings();
+          console.log('Camera settings:', settings);
+          
           if (videoRef.current) {
+            // 設置視頻元素
             videoRef.current.srcObject = streamRef.current;
             
-            // 设置iPad特定的属性
+            // 設置iPad特定的屬性（基於診斷工具的成功配置）
             videoRef.current.playsInline = true;
             videoRef.current.muted = true;
             videoRef.current.autoplay = true;
             videoRef.current.setAttribute('webkit-playsinline', 'true');
             
-            // 确保视频正确显示
+            // 確保視頻正確顯示
             videoRef.current.style.backgroundColor = '#000';
             videoRef.current.style.objectFit = 'cover';
             
-            // 添加iPad特定的播放處理
-            const playVideo = async () => {
-              try {
-                console.log('Attempting to play video on iPad...');
-                await videoRef.current!.play();
-                console.log('Video playing successfully on iPad');
-                setLoadingMessage('');
-                setAppState(AppState.CAMERA_PREVIEW);
-              } catch (playError) {
-                console.error('iPad video play error:', playError);
-                
-                // 嘗試不同的播放策略
-                try {
-                  // 確保視頻元素屬性正確設置
-                  videoRef.current!.muted = true;
-                  videoRef.current!.autoplay = true;
-                  videoRef.current!.playsInline = true;
-                  videoRef.current!.setAttribute('webkit-playsinline', 'true');
-                  
-                  // 等待一下再嘗試播放
-                  setTimeout(async () => {
-                    try {
-                      await videoRef.current!.play();
-                      console.log('Video playing after retry on iPad');
-                      setLoadingMessage('');
-                      setAppState(AppState.CAMERA_PREVIEW);
-                    } catch (retryError) {
-                      console.error('Second attempt to play video failed:', retryError);
-                      setLoadingMessage('');
-                      handleError('iPad相機畫面顯示失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器\n5. 檢查iPad系統設定中的相機權限', retryError);
-                    }
-                  }, 500);
-                  
-                } catch (retryError) {
-                  console.error('Retry failed:', retryError);
-                  setLoadingMessage('');
-                  handleError('iPad相機播放失敗', retryError);
-                }
-              }
+            // 監聽視頻事件（基於診斷工具的成功邏輯）
+            const handleLoadedMetadata = () => {
+              console.log('Video metadata loaded on iPad');
+              console.log(`Video dimensions: ${videoRef.current!.videoWidth}x${videoRef.current!.videoHeight}`);
             };
             
-            // 監聽視頻元數據加載
-            videoRef.current.addEventListener('loadedmetadata', () => {
-              console.log('Video metadata loaded on iPad');
-              playVideo();
-            });
-            
-            // 監聽視頻開始播放
-            videoRef.current.addEventListener('play', () => {
+            const handlePlay = () => {
               console.log('Video playing successfully on iPad');
-            });
+              setLoadingMessage('');
+              setAppState(AppState.CAMERA_PREVIEW);
+            };
             
-            // 監聽視頻錯誤
-            videoRef.current.addEventListener('error', (err) => {
+            const handleVideoError = (err: any) => {
               console.error('Video element error on iPad:', err);
               setLoadingMessage('');
               handleError('iPad視頻元素錯誤', err);
-            });
+            };
             
-            // 嘗試立即播放
-            playVideo();
+            // 添加事件監聽器
+            videoRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+            videoRef.current.addEventListener('play', handlePlay);
+            videoRef.current.addEventListener('error', handleVideoError);
+            
+            // 嘗試播放視頻（基於診斷工具的成功方法）
+            try {
+              console.log('Attempting to play video on iPad...');
+              const playPromise = videoRef.current.play();
+              
+              if (playPromise !== undefined) {
+                await playPromise;
+                console.log('Video playing successfully on iPad');
+                setLoadingMessage('');
+                setAppState(AppState.CAMERA_PREVIEW);
+              } else {
+                console.log('Play command did not return promise, but video may still play');
+                setLoadingMessage('');
+                setAppState(AppState.CAMERA_PREVIEW);
+              }
+            } catch (playError) {
+              console.error('Video play failed:', playError);
+              setLoadingMessage('');
+              handleError('iPad相機播放失敗。請嘗試：\n1. 確保已授予相機權限（設定 → Safari/Chrome → 相機）\n2. 關閉其他使用相機的應用程式\n3. 重新啟動瀏覽器\n4. 如果使用Chrome，請切換到Safari瀏覽器', playError);
+            }
           }
           
           return;
           
-        } catch (diagnosisError) {
-          console.error('iPad camera diagnosis failed:', diagnosisError);
+        } catch (error) {
+          console.error('iPad camera initialization failed:', error);
           setLoadingMessage('');
           
           // 提供iPad特定的错误信息
           let detailedMessage = 'iPad相機初始化失敗';
-          if (diagnosisError instanceof Error) {
-            if (diagnosisError.message.includes('未找到相機設備')) {
+          if (error instanceof Error) {
+            if (error.message.includes('未找到相機設備')) {
               detailedMessage = 'iPad未檢測到相機設備。請確認：\n1. iPad有相機功能\n2. 相機未被其他應用程式佔用\n3. 重新啟動iPad後重試';
-            } else if (diagnosisError.message.includes('相機流中沒有視頻軌道')) {
+            } else if (error.message.includes('相機流中沒有視頻軌道')) {
               detailedMessage = 'iPad相機無法提供視頻軌道。請嘗試：\n1. 重新啟動iPad\n2. 切換到Safari瀏覽器\n3. 檢查相機是否被其他應用程式佔用';
-            } else if (diagnosisError.message.includes('相機無法提供有效的視頻尺寸')) {
+            } else if (error.message.includes('相機無法提供有效的視頻尺寸')) {
               detailedMessage = 'iPad相機無法提供有效的視頻尺寸。請嘗試：\n1. 重新啟動瀏覽器\n2. 切換到Safari瀏覽器\n3. 檢查iPad相機是否正常工作';
             } else {
-              detailedMessage = `iPad相機錯誤: ${diagnosisError.message}`;
+              detailedMessage = `iPad相機錯誤: ${error.message}`;
             }
           }
           
-          handleError(detailedMessage, diagnosisError);
+          handleError(detailedMessage, error);
           return;
         }
       }
