@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPad調試控制台</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .debug-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .debug-header {
+            background: #2d2d2d;
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .debug-title {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .debug-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .debug-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .debug-btn:hover {
+            background: #45a049;
+        }
+        
+        .debug-btn.danger {
+            background: #f44336;
+        }
+        
+        .debug-btn.danger:hover {
+            background: #da190b;
+        }
+        
+        .debug-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .debug-sidebar {
+            width: 200px;
+            background: #2d2d2d;
+            border-right: 1px solid #444;
+            overflow-y: auto;
+        }
+        
+        .debug-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .debug-tabs {
+            display: flex;
+            background: #333;
+            border-bottom: 1px solid #444;
+        }
+        
+        .debug-tab {
+            padding: 10px 15px;
+            background: #333;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .debug-tab.active {
+            background: #2d2d2d;
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+        
+        .debug-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: none;
+        }
+        
+        .debug-panel.active {
+            display: block;
+        }
+        
+        .console-log {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 3px;
+            word-wrap: break-word;
+        }
+        
+        .log-info {
+            background: rgba(33, 150, 243, 0.1);
+            border-left: 3px solid #2196F3;
+            color: #64B5F6;
+        }
+        
+        .log-warn {
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 3px solid #ff9800;
+            color: #FFB74D;
+        }
+        
+        .log-error {
+            background: rgba(244, 67, 54, 0.1);
+            border-left: 3px solid #f44336;
+            color: #EF5350;
+        }
+        
+        .log-success {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 3px solid #4CAF50;
+            color: #81C784;
+        }
+        
+        .log-debug {
+            background: rgba(156, 39, 176, 0.1);
+            border-left: 3px solid #9C27B0;
+            color: #BA68C8;
+        }
+        
+        .device-info {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .device-info h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .device-info p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .network-info {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .network-info h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .network-info p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .camera-info {
+            padding: 10px;
+        }
+        
+        .camera-info h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .camera-info p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .command-input {
+            display: flex;
+            padding: 10px;
+            background: #2d2d2d;
+            border-top: 1px solid #444;
+        }
+        
+        .command-input input {
+            flex: 1;
+            background: #444;
+            border: 1px solid #666;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .command-input button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background: #333;
+            border-bottom: 1px solid #444;
+            font-size: 12px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <div class="debug-header">
+            <div class="debug-title">🔍 iPad調試控制台</div>
+            <div class="debug-controls">
+                <button class="debug-btn" onclick="clearLogs()">清除日誌</button>
+                <button class="debug-btn" onclick="exportLogs()">導出日誌</button>
+                <button class="debug-btn danger" onclick="testCamera()">測試相機</button>
+            </div>
+        </div>
+        
+        <div class="debug-content">
+            <div class="debug-sidebar">
+                <div class="device-info">
+                    <h4>📱 設備信息</h4>
+                    <div id="deviceInfo"></div>
+                </div>
+                
+                <div class="network-info">
+                    <h4>🌐 網路信息</h4>
+                    <div id="networkInfo"></div>
+                </div>
+                
+                <div class="camera-info">
+                    <h4>📷 相機信息</h4>
+                    <div id="cameraInfo"></div>
+                </div>
+            </div>
+            
+            <div class="debug-main">
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number" id="logCount">0</div>
+                        <div class="stat-label">日誌條目</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="errorCount">0</div>
+                        <div class="stat-label">錯誤</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="warnCount">0</div>
+                        <div class="stat-label">警告</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="memoryUsage">-</div>
+                        <div class="stat-label">記憶體</div>
+                    </div>
+                </div>
+                
+                <div class="debug-tabs">
+                    <button class="debug-tab active" onclick="switchTab('console')">控制台</button>
+                    <button class="debug-tab" onclick="switchTab('network')">網路</button>
+                    <button class="debug-tab" onclick="switchTab('performance')">效能</button>
+                    <button class="debug-tab" onclick="switchTab('storage')">儲存</button>
+                </div>
+                
+                <div id="console-panel" class="debug-panel active">
+                    <div id="console-logs"></div>
+                </div>
+                
+                <div id="network-panel" class="debug-panel">
+                    <div id="network-logs"></div>
+                </div>
+                
+                <div id="performance-panel" class="debug-panel">
+                    <div id="performance-logs"></div>
+                </div>
+                
+                <div id="storage-panel" class="debug-panel">
+                    <div id="storage-logs"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="command-input">
+            <input type="text" id="commandInput" placeholder="輸入JavaScript命令..." onkeypress="handleCommand(event)">
+            <button onclick="executeCommand()">執行</button>
+        </div>
+    </div>
+
+    <script>
+        let logs = [];
+        let stats = {
+            total: 0,
+            errors: 0,
+            warnings: 0
+        };
+        
+        // 重寫console方法
+        const originalConsole = {
+            log: console.log,
+            warn: console.warn,
+            error: console.error,
+            info: console.info
+        };
+        
+        function addLog(level, message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                id: Date.now() + Math.random(),
+                timestamp,
+                level,
+                message,
+                data,
+                stack: new Error().stack
+            };
+            
+            logs.push(logEntry);
+            stats.total++;
+            
+            if (level === 'error') stats.errors++;
+            if (level === 'warn') stats.warnings++;
+            
+            updateStats();
+            renderLog(logEntry);
+            
+            // 保持原始console功能
+            originalConsole[level](`[${timestamp}] ${message}`, data);
+        }
+        
+        function renderLog(logEntry) {
+            const logsContainer = document.getElementById('console-logs');
+            const logElement = document.createElement('div');
+            logElement.className = `console-log log-${logEntry.level}`;
+            
+            let logContent = `[${logEntry.timestamp}] ${logEntry.message}`;
+            if (logEntry.data) {
+                logContent += `\n數據: ${JSON.stringify(logEntry.data, null, 2)}`;
+            }
+            
+            logElement.textContent = logContent;
+            logsContainer.appendChild(logElement);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        function updateStats() {
+            document.getElementById('logCount').textContent = stats.total;
+            document.getElementById('errorCount').textContent = stats.errors;
+            document.getElementById('warnCount').textContent = stats.warnings;
+            
+            // 更新記憶體使用情況
+            if (performance.memory) {
+                const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                document.getElementById('memoryUsage').textContent = `${memoryMB}MB`;
+            }
+        }
+        
+        // 重寫console方法
+        console.log = (message, data) => addLog('info', message, data);
+        console.warn = (message, data) => addLog('warn', message, data);
+        console.error = (message, data) => addLog('error', message, data);
+        console.info = (message, data) => addLog('info', message, data);
+        
+        // 捕獲未處理的錯誤
+        window.addEventListener('error', (event) => {
+            addLog('error', `未處理的錯誤: ${event.message}`, {
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                stack: event.error?.stack
+            });
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog('error', `未處理的Promise拒絕: ${event.reason}`, {
+                stack: event.reason?.stack
+            });
+        });
+        
+        function clearLogs() {
+            logs = [];
+            stats = { total: 0, errors: 0, warnings: 0 };
+            document.getElementById('console-logs').innerHTML = '';
+            updateStats();
+            addLog('info', '日誌已清除');
+        }
+        
+        function exportLogs() {
+            const logData = {
+                timestamp: new Date().toISOString(),
+                deviceInfo: getDeviceInfo(),
+                logs: logs
+            };
+            
+            const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ipad-debug-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addLog('success', '日誌已導出');
+        }
+        
+        function getDeviceInfo() {
+            return {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                screen: {
+                    width: screen.width,
+                    height: screen.height,
+                    availWidth: screen.availWidth,
+                    availHeight: screen.availHeight
+                },
+                window: {
+                    innerWidth: window.innerWidth,
+                    innerHeight: window.innerHeight,
+                    devicePixelRatio: window.devicePixelRatio
+                },
+                features: {
+                    getUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+                    enumerateDevices: !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices),
+                    permissions: !!navigator.permissions,
+                    serviceWorker: 'serviceWorker' in navigator
+                }
+            };
+        }
+        
+        function updateDeviceInfo() {
+            const deviceInfo = getDeviceInfo();
+            const deviceInfoElement = document.getElementById('deviceInfo');
+            
+            deviceInfoElement.innerHTML = `
+                <p><strong>設備:</strong> ${deviceInfo.platform}</p>
+                <p><strong>語言:</strong> ${deviceInfo.language}</p>
+                <p><strong>螢幕:</strong> ${deviceInfo.screen.width}x${deviceInfo.screen.height}</p>
+                <p><strong>視窗:</strong> ${deviceInfo.window.innerWidth}x${deviceInfo.window.innerHeight}</p>
+                <p><strong>像素比:</strong> ${deviceInfo.window.devicePixelRatio}</p>
+                <p><strong>線上:</strong> ${deviceInfo.onLine ? '是' : '否'}</p>
+            `;
+            
+            const networkInfoElement = document.getElementById('networkInfo');
+            networkInfoElement.innerHTML = `
+                <p><strong>連線:</strong> ${navigator.onLine ? '線上' : '離線'}</p>
+                <p><strong>Cookie:</strong> ${navigator.cookieEnabled ? '啟用' : '停用'}</p>
+                <p><strong>協定:</strong> ${location.protocol}</p>
+                <p><strong>主機:</strong> ${location.hostname}</p>
+            `;
+        }
+        
+        async function updateCameraInfo() {
+            const cameraInfoElement = document.getElementById('cameraInfo');
+            
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                    cameraInfoElement.innerHTML = '<p style="color: #f44336;">不支援設備枚舉</p>';
+                    return;
+                }
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                cameraInfoElement.innerHTML = `
+                    <p><strong>視頻設備:</strong> ${videoDevices.length}</p>
+                    <p><strong>getUserMedia:</strong> ${!!navigator.mediaDevices.getUserMedia ? '支援' : '不支援'}</p>
+                    <p><strong>權限API:</strong> ${!!navigator.permissions ? '支援' : '不支援'}</p>
+                `;
+                
+                if (videoDevices.length > 0) {
+                    videoDevices.forEach((device, index) => {
+                        cameraInfoElement.innerHTML += `<p><strong>設備${index + 1}:</strong> ${device.label || '未知'}</p>`;
+                    });
+                }
+            } catch (error) {
+                cameraInfoElement.innerHTML = `<p style="color: #f44336;">錯誤: ${error.message}</p>`;
+            }
+        }
+        
+        async function testCamera() {
+            addLog('info', '開始測試相機...');
+            
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('不支援getUserMedia API');
+                }
+                
+                const constraints = {
+                    video: {
+                        facingMode: 'user'
+                    }
+                };
+                
+                addLog('info', '請求相機權限...', constraints);
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                const videoTracks = stream.getVideoTracks();
+                addLog('success', `相機測試成功 - 找到 ${videoTracks.length} 個視頻軌道`);
+                
+                if (videoTracks.length > 0) {
+                    const track = videoTracks[0];
+                    const settings = track.getSettings();
+                    addLog('info', '相機設定', settings);
+                }
+                
+                // 清理流
+                stream.getTracks().forEach(track => track.stop());
+                addLog('info', '相機流已清理');
+                
+            } catch (error) {
+                addLog('error', `相機測試失敗: ${error.message}`, {
+                    name: error.name,
+                    stack: error.stack
+                });
+            }
+        }
+        
+        function switchTab(tabName) {
+            // 移除所有活動標籤
+            document.querySelectorAll('.debug-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.debug-panel').forEach(panel => panel.classList.remove('active'));
+            
+            // 激活選中的標籤
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-panel`).classList.add('active');
+        }
+        
+        function handleCommand(event) {
+            if (event.key === 'Enter') {
+                executeCommand();
+            }
+        }
+        
+        function executeCommand() {
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            
+            if (!command) return;
+            
+            addLog('debug', `執行命令: ${command}`);
+            
+            try {
+                const result = eval(command);
+                addLog('success', `結果: ${JSON.stringify(result, null, 2)}`);
+            } catch (error) {
+                addLog('error', `命令執行失敗: ${error.message}`);
+            }
+            
+            input.value = '';
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('info', 'iPad調試控制台已啟動');
+            updateDeviceInfo();
+            updateCameraInfo();
+            updateStats();
+            
+            // 定期更新統計信息
+            setInterval(updateStats, 1000);
+        });
+        
+        // 捕獲頁面載入事件
+        window.addEventListener('load', () => {
+            addLog('success', '頁面載入完成');
+        });
+        
+        // 捕獲頁面卸載事件
+        window.addEventListener('beforeunload', () => {
+            addLog('info', '頁面即將卸載');
+        });
+    </script>
+</body>
+</html>

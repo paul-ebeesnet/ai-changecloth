@@ -19,6 +19,9 @@ const App: React.FC = () => {
   const [costumeImage, setCostumeImage] = useState<string | null>(null);
   const [finalImage, setFinalImage] = useState<string | null>(null);
   const [uploadResult, setUploadResult] = useState<{ imageUrl: string; qrCodeUrl: string; thumbnailUrl?: string } | null>(null);
+  
+  // 檢查是否啟用調試模式
+  const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
 
   // Add effect to log uploadResult changes
   useEffect(() => {
@@ -967,6 +970,41 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4 md:p-8">
       {showLoading && <LoadingOverlay message={loadingMessage} />}
+      {isDebugMode && (
+        <div className="fixed top-4 right-4 bg-black bg-opacity-80 p-4 rounded-lg max-w-md text-xs font-mono z-50">
+          <div className="text-green-400 font-bold mb-2">🔍 調試模式</div>
+          <div className="space-y-1">
+            <div>設備: {navigator.userAgent.includes('iPad') ? 'iPad' : '其他'}</div>
+            <div>瀏覽器: {/Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent) ? 'Safari' : 'Chrome/其他'}</div>
+            <div>getUserMedia: {navigator.mediaDevices?.getUserMedia ? '✅' : '❌'}</div>
+            <div>相機流: {streamRef.current ? '✅' : '❌'}</div>
+            <div>視頻元素: {videoRef.current ? '✅' : '❌'}</div>
+            <div>當前狀態: {AppState[appState]}</div>
+            <div className="mt-2">
+              <button 
+                onClick={() => console.log('調試信息:', {
+                  deviceInfo: {
+                    userAgent: navigator.userAgent,
+                    isiPad: navigator.userAgent.includes('iPad'),
+                    isiOS: /iPhone|iPad|iPod/i.test(navigator.userAgent),
+                    isSafari: /Safari/i.test(navigator.userAgent) && !/Chrome/i.test(navigator.userAgent)
+                  },
+                  cameraInfo: {
+                    hasStream: !!streamRef.current,
+                    hasVideoElement: !!videoRef.current,
+                    streamTracks: streamRef.current?.getTracks().length || 0
+                  },
+                  appState: AppState[appState],
+                  errors: error
+                })}
+                className="bg-blue-600 text-white px-2 py-1 rounded text-xs"
+              >
+                輸出調試信息
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <main className="container mx-auto flex items-center justify-center">
         {renderContent()}
       </main>
